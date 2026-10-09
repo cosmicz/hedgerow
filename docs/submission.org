@@ -7,7 +7,7 @@ Copy-ready form text is in [[file:submission-fields.org][submission fields]].
 Summary: 170/300 characters. Description: 1255/1500. Architecture, setup and
 lessons are each under 1200 characters. This is not a submission receipt.
 
-- Operator-requested release: https://github.com/cosmicz/hedgerow (squashed tree; push/access verification pending).
+- Release: https://github.com/cosmicz/hedgerow (public; verified main a8079737a2d1 matches app a39ee7a tree).
 - Private working repository: https://github.com/cosmicz/hedgerow.oc .
 - Uploaded v0.0: https://youtu.be/o8yUj5TYQcM (operator-supplied unlisted link).
 - Local v0.1: ~private/demo/hedgerow-v0.1.mp4~, 90.04 seconds, H.264 1440x1012.
@@ -16,7 +16,11 @@ lessons are each under 1200 characters. This is not a submission receipt.
 - v0.1 shows captured DNS rows, Jev/Clef, approval, OpenAI response and recovery.
 - Both are actual automated live UI captures with automated test approval,
   not human-click footage. Raw source/proof files remain private.
-- The latest incident/chat UI is additional work and is not in either video.
+- Clean incident/chat UI video: ~private/demo/hedgerow-v0.3.mp4~,80.16seconds,
+  270 actual frames, verified playback. Includes model grouping, chat, approved
+  action, recovery, Senso and audit services. Awaiting operator upload.
+  SHA256 ~170399020f9735712fc41430781c2cd16a58327ef514fc75d894f5d5ee84eac8~.
+  v0.2 was a failed static capture; do not publish that file.
 - Incident/chat proof at bce7333: real query165 automatically classified by
   hosted Jev and Clef, grouped incident highlighted, actual OpenAI chat response.
   Private proof hash ~968a52515ec2f68fc0764fa24b0217620cbf465b6c9ddef769f66994608bfc83~.
@@ -31,6 +35,8 @@ lessons are each under 1200 characters. This is not a submission receipt.
 | v0.0 video | 2a61185 | Full decode passes; real router/DNS/guidance/audit/recovery frames inspected |
 | v0.1 video | 35cc08e | Actual query155 linked to model results and agent tools; block and recovery verified |
 | Focused live-log checks | 5ed7ff2 | 17 tests,185 assertions; strict TypeScript; Claude post-merge review fixes applied |
+| Incident/chat recording | a39ee7a | v0.3: captured query176, both classifiers, agent chat, verified block and recovery, sponsor panels |
+| Final availability checks | Post-a39ee7a patch | 185 offline tests pass,24 opt-in skips,898 assertions; strict TypeScript and diff check pass |
 
 The Pi runs the controller; lab resolver/client probes remain Mac-hosted
 containers. Router credential rotation uses fixed Docker commands inside an
@@ -51,15 +57,15 @@ Private artifact hashes:
 v0.1 paused after approval because the recording driver read stale browser
 state. Refresh resumed the same fresh approved digest, and the action and
 undo passed. The driver is corrected. No invented or substituted evidence.
-A final exhaustive suite was not run, per operator crunch-time policy;
-focused authority, HTTP, controller, collector and recording checks were used.
+The final offline suite passes. The 24 opt-in live tests were not repeated
+for the lock-only patch; retained live proofs identify their actual revisions.
 
 * Tools and sponsor accounting
 | Tool | Actual role | Counting limit |
 |------+-------------+----------------|
 | ClickHouse26.8 | Observation/audit queries | Listed challenge sponsor |
 | Senso | Cited public guidance in UI | Listed challenge sponsor |
-| Semgrep CLI1.180.0 | Clean-revision source scan;48 files,zero findings at960434e | Listed sponsor; CLI vs Guardian eligibility unconfirmed |
+| Semgrep CLI1.180.0 | Source scan;50 files,zero findings at a39ee7a | Listed sponsor; CLI vs Guardian eligibility unconfirmed |
 | MongoDB8.0.4 | Durable audit projection | Event partner; counting unconfirmed |
 | OpenAI gpt-5.4-mini via OpenRouter | Bounded mitigation and trace explanation | Partner/indirect-provider eligibility unconfirmed |
 | Jev1.13 and Clef via OpenRouter | Hosted classifications | Small lab proofs, not general accuracy claims |
@@ -80,7 +86,7 @@ instructions/gallery opt-out. Public gallery initializes true: choose deliberate
 - [X] Uploaded backup link and checked local second video.
 - [X] Copy-ready bounded form fields.
 - [X] Standalone README and Pi hybrid setup.
-- [ ] Latest code push and remote SHA verification.
+- [X] Released a39ee7a tree and verified remote SHA/tree; final follow-up patches tracked separately.
 - [ ] Operator confirms judge repository access and sponsor selections.
 - [ ] Operator enters team/contact details privately.
 - [ ] Operator chooses video/gallery settings and checks form preview.

@@ -5,6 +5,25 @@ import { collectQueryEvidence } from "../../src/demo/evidence";
 import { SponsorBridge } from "../../src/adapters/sponsors";
 import { DemoSponsors } from "../../src/demo/sponsors";
 import { CapturedLogs } from "../../src/demo/logs";
+import { DemoChat } from "../../src/demo/chat";
+
+test("a pending read-only chat does not hold the action lock", async () => {
+  let release!: (response: Response) => void;
+  const chat = new DemoChat({ apiKey: "test-key", fetch: async () => new Promise<Response>(resolve => { release = resolve; }) });
+  const ledger = new SqliteLedger(":memory:");
+  const controller = new DemoController({ ledger, group: 1, now: Date.now, chat,
+    adapter: { read: async () => null, create: async () => {}, remove: async () => {} },
+    verify: async () => { throw Error("unused"); }, collect: async () => { throw Error("unused"); }, classifiers: [],
+    agent: { model: "fixture", provenance: "fake", respond: async () => ({}) } });
+  try {
+    const pending = controller.command("chat", { message: "What changed?" });
+    while (!release) await Bun.sleep(1);
+    await expect(controller.command("reset", {})).resolves.toMatchObject({ finding: null });
+    await expect(controller.command("chat", { message: "Still there?" })).rejects.toThrow("Operation in progress");
+    release(new Response(JSON.stringify({ choices: [{ message: { content: "No action has been taken." } }] }), { headers: { "content-type": "application/json" } }));
+    await expect(pending).resolves.toMatchObject({ chat: { messages: [{ role: "user" }, { role: "assistant" }] } });
+  } finally { ledger.close(); }
+});
 
 test("hybrid deployment label does not relabel VM probe evidence as physical", () => {
   const ledger=new SqliteLedger(":memory:");

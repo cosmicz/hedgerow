@@ -16,10 +16,11 @@ ClickHouse stores observations, MongoDB retains action audits, Senso supplies ci
 The prototype demonstrates real password changes and DNS enforcement in an owned lab. The next step is bringing that experience to supported household routers: plug it in, secure the basics, and keep watch.
 
 * Links
-- Release repository: https://github.com/cosmicz/hedgerow (operator-requested squashed release; verify push and judge access).
+- Release repository: https://github.com/cosmicz/hedgerow (public).
 - Private working repository: https://github.com/cosmicz/hedgerow.oc .
 - Uploaded video: https://youtu.be/o8yUj5TYQcM .
 - Additional local video: ~private/demo/hedgerow-v0.1.mp4~ (90.04 seconds).
+- Latest clean-interface video: ~private/demo/hedgerow-v0.3.mp4~ (80.16 seconds; upload pending).
 - Current setup: [[file:../README.org][README]] and [[file:hybrid.org][Pi hybrid setup]].
 
 * Architecture

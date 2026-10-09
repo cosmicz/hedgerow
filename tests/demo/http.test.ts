@@ -88,3 +88,22 @@ test("concurrent commands fail closed and internal errors are redacted", async (
   expect(await response.text()).not.toContain("SECRET");
   expect(calls).toBe(1);
 });
+test("a pending read-only chat leaves undo available but bounds concurrent chats", async () => {
+  let releaseChat!: () => void;
+  const commands: string[] = [];
+  const handler = createDemoHandler({ origin, token, assets: {}, state: () => ({}), command: async name => {
+    commands.push(name);
+    if (name === "chat") await new Promise<void>(resolve => { releaseChat = resolve; });
+    return { status: name };
+  } });
+  const post = (path: string, body: unknown = {}) => new Request(origin + path, {
+    method: "POST", headers: { Host: "127.0.0.1:8787", Origin: origin, "Content-Type": "application/json", "X-Hedgerow-CSRF": token }, body: JSON.stringify(body),
+  });
+  const chat = handler(post("/api/chat", { message: "What changed?" }));
+  while (!releaseChat) await Bun.sleep(1);
+  expect((await handler(post("/api/undo", { digest: "a".repeat(64) }))).status).toBe(200);
+  expect((await handler(post("/api/chat", { message: "Still there?" }))).status).toBe(409);
+  expect(commands).toEqual(["chat", "undo"]);
+  releaseChat();
+  expect((await chat).status).toBe(200);
+});

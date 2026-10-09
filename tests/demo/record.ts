@@ -185,11 +185,28 @@ async function main(): Promise<void> {
   }
   await session.send("Page.enable");
   await session.send("Page.startScreencast", { format: "jpeg", quality: args.quality, everyNthFrame: 1 });
+  await session.send("Page.bringToFront").catch(() => {});
+  // Chrome can stop emitting screencast frames after viewport emulation or
+  // occlusion. Poll actual rendered frames if the event stream stalls.
+  let capturePending: Promise<void> | null = null;
+  const fallbackTimer = setInterval(() => {
+    if (stopped || capturePending || Date.now() - (frames.at(-1)?.ms ?? 0) < 900) return;
+    capturePending = (async () => {
+      const shot = await session.send<{ data: string }>("Page.captureScreenshot", { format: "jpeg", quality: args.quality, captureBeyondViewport: false });
+      if (stopped) return;
+      const ms = Date.now();
+      const file = join(runDir, `frame-${String(frames.length).padStart(6, "0")}.jpg`);
+      writeFileSync(file, Buffer.from(shot.data, "base64"));
+      frames.push({ file, ms });
+    })().catch(() => {}).finally(() => { capturePending = null; });
+  }, 500);
 
   console.log(`recording ${args.match} for up to ${args.seconds}s (frames -> ${runDir}); Ctrl-C to stop early`);
   await waitForStop(args.seconds, () => { stopped = true; });
 
   stopped = true;
+  clearInterval(fallbackTimer);
+  if (capturePending) await capturePending;
   await session.send("Page.stopScreencast").catch(() => {});
   if (args.label) {
     await session.send("Runtime.evaluate", {

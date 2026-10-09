@@ -36,7 +36,8 @@ export function createDemoHandler(o: HttpPorts) {
   const origin = new URL(o.origin);
   if (origin.hostname !== "127.0.0.1" || origin.protocol !== "http:" || origin.origin !== o.origin ||
     !/^[a-f0-9]{64}$/.test(o.token)) throw new Error("Explicit local origin and random CSRF token required");
-  let busy = false;
+  let actionBusy = false;
+  let chatBusy = false;
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     if (url.origin !== o.origin || request.headers.get("Host") !== origin.host ||
@@ -60,10 +61,17 @@ export function createDemoHandler(o: HttpPorts) {
     const keys = name==="chat"?["message"]:["approve", "execute", "undo", "router-approve", "router-execute"].includes(name) ? ["digest"] : [];
     if (!input || Array.isArray(input) || typeof input !== "object" || Object.keys(input).length !== keys.length ||
       !keys.every(key => Object.hasOwn(input, key)) || (name==="chat" ? typeof input.message!=="string"||input.message.trim().length<1||input.message.length>1000 : keys.length && (typeof input.digest !== "string" || !/^[a-f0-9]{64}$/.test(input.digest)))) return json({ error: "Exact command fields required" }, 400);
-    if (busy) return json({ error: "Another operation is running; inspect state before retrying" }, 409);
-    busy = true;
+    // Chat reads a closed snapshot only; it must not delay an operator's scoped
+    // action or undo. Keep each class single-flight independently.
+    const isChat = name === "chat";
+    if (isChat ? chatBusy : actionBusy) return json({ error: "Another operation is running; inspect state before retrying" }, 409);
+    if (isChat) chatBusy = true;
+    else actionBusy = true;
     try { return json(await o.command(name as Command, input)); }
     catch { return json({ error: "Operation unavailable or outcome requires inspection; check measured state before retrying" }, 409); }
-    finally { busy = false; }
+    finally {
+      if (isChat) chatBusy = false;
+      else actionBusy = false;
+    }
   };
 }

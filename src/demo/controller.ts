@@ -33,7 +33,8 @@ export class DemoController {
   private report: AgentReport | null = null;
   private reportAt: number | null = null;
   private observedAt = 0;
-  private busy = false;
+  private actionBusy = false;
+  private chatBusy = false;
   readonly actions: ActionService;
   constructor(private o: Options) {
     this.actions = new ActionService({ ...o, policy: { network_scope: scope, resolver_id: "pihole-lab", group_id: o.group,
@@ -75,16 +76,18 @@ export class DemoController {
       limits: "DNS denial covers one configured client group, not other resolvers or existing connections. Router hardening is a fixed owned container demonstration, not proof of consumer-router compatibility." };
   }
   async reconcile(startup = false) {
-    if (this.busy) return;
+    if (this.actionBusy) return;
     if (!startup && !this.o.ledger.list().some(r => r.proposal.expires_at <= this.o.now() && ["active", "ambiguous"].includes(r.status))) return;
-    this.busy = true;
+    this.actionBusy = true;
     try { await this.actions.reconcile(startup); } finally {
-      this.busy = false; this.o.sponsors?.schedule(this.o.ledger, this.evidence);
+      this.actionBusy = false; this.o.sponsors?.schedule(this.o.ledger, this.evidence);
     }
   }
   async command(name: Command, input: { digest?: string; message?: string }) {
-    if (this.busy) throw new Error("Operation in progress");
-    this.busy = true;
+    const isChat = name === "chat";
+    if (isChat ? this.chatBusy : this.actionBusy) throw new Error("Operation in progress");
+    if (isChat) this.chatBusy = true;
+    else this.actionBusy = true;
     const refs=()=>this.evidence?.observations.filter(x=>x.kind==="dns_query").map(x=>x.evidence_ref)??[];
     this.o.logs?.event(name, `Requested: ${name}.`, name==="observe"||name.startsWith("router-")?[]:refs());
     try {
@@ -102,7 +105,11 @@ export class DemoController {
       this.o.logs?.event("operation-failed",`${name} did not complete. Inspect measured state; no success assumed.`,refs());
       throw error;
     } finally {
-      this.busy = false; this.o.sponsors?.schedule(this.o.ledger, this.evidence);
+      if (isChat) this.chatBusy = false;
+      else {
+        this.actionBusy = false;
+        this.o.sponsors?.schedule(this.o.ledger, this.evidence);
+      }
     }
     return this.state();
   }

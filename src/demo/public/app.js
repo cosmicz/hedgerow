@@ -1,8 +1,8 @@
-let token, state, busy=false, connectionLost=false;
+let token, state, actionBusy=false, chatBusy=false, connectionLost=false;
 const byId=id=>document.getElementById(id);
 const node=(tag,text,className)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(className)n.className=className;return n;};
 const when=at=>at?new Date(at).toLocaleTimeString():"time unavailable";
-function button(label,command,digest){const n=node("button",label,"secondary");n.disabled=busy;n.addEventListener("click",()=>run(command,{digest}));return n;}
+function button(label,command,digest){const n=node("button",label,"secondary");n.disabled=actionBusy;n.addEventListener("click",()=>run(command,{digest}));return n;}
 function renderRouter(r){
   const section=byId("router");section.replaceChildren();
   if(!r){section.append(node("p","Router integration is not connected."));return;}
@@ -83,14 +83,14 @@ function render(s){
     if(s.sponsors.error)sponsors.append(node("p",s.sponsors.error,"caution"));
   }else sponsors.append(node("p","Sponsor stores are not configured for this session."));
   byId("raw").textContent=JSON.stringify(s,null,2);
-  document.querySelectorAll("button[data-command]").forEach(n=>n.disabled=busy);
+  document.querySelectorAll("button[data-command]").forEach(n=>n.disabled=actionBusy);
 }
 async function session(){const response=await fetch("/api/session");if(!response.ok)throw new Error("Local session unavailable");token=(await response.json()).token;}
 async function refresh(){const response=await fetch("/api/state");if(!response.ok)throw new Error("State unavailable");render(await response.json());if(connectionLost){connectionLost=false;byId("message").textContent="Connected.";}}
-async function run(command,input={}){if(busy)return;busy=true;if(state)render(state);byId("message").textContent="Working…";
+async function run(command,input={}){const isChat=command==="chat";if(isChat?chatBusy:actionBusy)return;if(isChat)chatBusy=true;else actionBusy=true;if(state)render(state);byId("message").textContent="Working…";
   try{await session();const response=await fetch(`/api/${command}`,{method:"POST",headers:{"Content-Type":"application/json","X-Hedgerow-CSRF":token},body:JSON.stringify(input)});const result=await response.json();if(!response.ok)throw new Error(result.error||"Operation unavailable");render(result);byId("message").textContent="Done.";}
   catch(error){byId("message").textContent=error.message;await refresh().catch(()=>{});}
-  finally{busy=false;if(state)render(state);}}
+  finally{if(isChat)chatBusy=false;else actionBusy=false;if(state)render(state);}}
 document.querySelectorAll("[data-command]").forEach(n=>n.addEventListener("click",()=>run(n.dataset.command)));
   (async()=>{try{await session();await refresh();setInterval(()=>{void refresh().catch(()=>{connectionLost=true;byId("message").textContent="Disconnected. Reconnecting…";});},1500);}catch(error){byId("message").textContent=error.message;}})();
 
@@ -111,7 +111,7 @@ function renderChat(s){
     for(const m of messages){const line=node("div",undefined,"chat-message "+m.role);line.append(node("small",m.role==="user"?"You":"Hedgerow"),node("p",m.content));root.append(line);}
     root.scrollTop=root.scrollHeight;
   }
-  byId("chat-input").disabled=busy;
+  byId("chat-input").disabled=chatBusy;
   if(s.chat?.error)byId("message").textContent=s.chat.error;
 }
-byId("chat-form").addEventListener("submit",async e=>{e.preventDefault();const field=byId("chat-input"),message=field.value.trim();if(!message||busy)return;field.value="";await run("chat",{message});});
+byId("chat-form").addEventListener("submit",async e=>{e.preventDefault();const field=byId("chat-input"),message=field.value.trim();if(!message||chatBusy)return;field.value="";await run("chat",{message});});

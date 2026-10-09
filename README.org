@@ -10,8 +10,10 @@ This branch contains tested DNS-action authority, bounded Jev/Clef classificatio
 and OpenAI tool orchestration. A local DNS demonstration UI now wires these
 components to actual owned-lab query collection and sponsor audit stores. The
 router UI completes a live seeded-credential attack, hosted classification,
-approved rotation and independently checked old/new authentication. Final
-recording and Pi-hosted integration remain in progress.
+approved rotation and independently checked old/new authentication. Recorded
+walkthroughs and a physical Pi-hosted DNS/model/agent/recovery proof are complete.
+The live workspace streams captured query rows, groups fresh flagged rows with
+automatic Jev/Clef assessment, and offers an evidence-grounded agent chat.
 See [[file:docs/submission.org][the evidence ledger and submission checklist]] for exact revisions and limits.
 
 * Run the local checks
@@ -54,8 +56,12 @@ ignored ~.env~; ~OPENROUTER_API_KEY~ stays server-side. Bun reads the applicatio
 ~.env~, or use its ~--env-file=/private/path/to/.env~ option for an existing key.
 Never copy a key into the browser or commit it.
 
-Run the lab test, ask Jev/Clef, review the exact protection, approve it, ask
-OpenAI to apply it, inspect independent target/benign checks, then undo.
+Generate test traffic and watch the log rows appear. Fresh flagged rows are
+automatically assessed by both Jev and Clef and grouped into incidents. Ask the
+agent about the evidence, review a response, approve the block, apply it, inspect
+target/benign verification, then undo. Chat is explanatory; the action controls
+retain exact approval. Each model sees only closed lab log fields, not arbitrary
+household traffic; related rows are grouped without repeated calls for 60 seconds.
 The model cannot approve anything. Missing inference stays unavailable;
 it does not silently become a hosted result. Evidence expires after 60 seconds;
 start a new observation if an unexecuted proposal becomes stale.

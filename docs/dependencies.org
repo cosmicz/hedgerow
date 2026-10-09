@@ -1,0 +1,13 @@
+#+title: Dependency inventory
+
+The owner has not selected a project-wide open-source license for this private
+repository. Runtime dependencies are installed, not vendored. Use the checked-in
+lockfile with ~bun install --frozen-lockfile~ and Bun1.2.10.
+
+Installed metadata records mongodb6.21.0 and bson6.10.4 as Apache-2.0;
+typescript7.0.2 as Apache-2.0; @types/bun1.4.2 and bun-types1.4.2 as MIT.
+The OpenWrt image reports GPL-2.0 and source github.com/openwrt/docker,
+revision1164645a5ed34d91b08077f7549884c01503ad18. README records its immutable
+image identifiers. No downloaded firmware, service binary or provider key is
+committed. Upstream tools and hosted services retain their separate terms.
+This is a metadata inventory, not a comprehensive license audit.

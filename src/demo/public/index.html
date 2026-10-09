@@ -20,7 +20,7 @@
       <div id="chat-messages" role="log" aria-live="polite"></div>
       <section id="approval" aria-label="Proposed response"></section>
       <section id="verification" aria-label="Verification"></section>
-      <section id="interpretation" aria-label="Agent response"></section>
+      <details><summary>Execution details</summary><section id="interpretation" aria-label="Agent response"></section></details>
       <form id="chat-form"><label for="chat-input" class="sr-only">Message Hedgerow</label><textarea id="chat-input" maxlength="1000" rows="2" placeholder="What happened? What should I do?"></textarea><button type="submit">Send</button></form>
       <button class="secondary" data-command="propose">Review response</button>
       <details id="response-history"><summary>Agent activity</summary><ol id="activity-rows"></ol></details>

@@ -7,7 +7,8 @@ Copy-ready form text is in [[file:submission-fields.org][submission fields]].
 Summary: 170/300 characters. Description: 1255/1500. Architecture, setup and
 lessons are each under 1200 characters. This is not a submission receipt.
 
-- Private repository: https://github.com/cosmicz/hedgerow.oc .
+- Operator-requested release: https://github.com/cosmicz/hedgerow (squashed tree; push/access verification pending).
+- Private working repository: https://github.com/cosmicz/hedgerow.oc .
 - Uploaded v0.0: https://youtu.be/o8yUj5TYQcM (operator-supplied unlisted link).
 - Local v0.1: ~private/demo/hedgerow-v0.1.mp4~, 90.04 seconds, H.264 1440x1012.
 - Editing clips: ~private/demo/v0.1-clips/~, five ordered clips, decode checked.
@@ -16,6 +17,9 @@ lessons are each under 1200 characters. This is not a submission receipt.
 - Both are actual automated live UI captures with automated test approval,
   not human-click footage. Raw source/proof files remain private.
 - The latest incident/chat UI is additional work and is not in either video.
+- Incident/chat proof at bce7333: real query165 automatically classified by
+  hosted Jev and Clef, grouped incident highlighted, actual OpenAI chat response.
+  Private proof hash ~968a52515ec2f68fc0764fa24b0217620cbf465b6c9ddef769f66994608bfc83~.
 
 * Verified results
 | Capability | Runtime/revision | Result |

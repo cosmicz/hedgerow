@@ -1,0 +1,66 @@
+#+title: Bounded mitigation and trace explanation
+
+* Execution boundary
+An OpenAI model is called through the operator-selected OpenRouter Responses
+transport. The default is ~openai/gpt-5.4-mini~; ~openai/gpt-5.4~ is an explicitly
+allowlisted alternative. Model output requests application-owned functions:
+~get_trace~, ~propose_dns_deny~, ~propose_router_hardening~, ~get_action_status~,
+and ~execute_approved~. There is no approval, shell, arbitrary URL or credential
+tool. Only server-owned digests from the current run can be addressed. The
+underlying service must enforce durable approval, evidence revision, expiry,
+ownership, idempotency and recovery independently of the model.
+Proposal eligibility additionally requires the application-owned ~finding~ port
+to resolve a deterministic finding for the requested action and exact current
+evidence revision. Jev/Clef judgment is annotation, not this gate: disagreement
+cannot erase a finding and a suspicious model label cannot create one. The live
+DNS adapter uses its fixed owned lab indicator and measured healthy baseline;
+the integrated collector must resolve real finding IDs from its evidence store.
+
+Four model rounds, eight tool calls, one attempted execution per digest per run,
+15-second provider deadlines and 1,200 output tokens per request bound the loop.
+Unknown functions, extra arguments, stale revisions and repeated mutation
+attempts are rejected. Provider failure retains actual tool results; it never
+fabricates successful mitigation or repeats an ambiguous write. Model output
+is not an authority boundary, even with strict schemas.
+
+* Data and explanation
+Only closed, redacted application trace summaries and bounded judgments are
+sent. Raw router logs, private identifiers and credentials stay local. Tools
+return projected state and verification, not entire credential-bearing objects.
+Trace text is untrusted data. The final model interpretation must cite existing
+trace IDs, and is displayed separately from authoritative measured facts.
+Citation existence checks do not prove semantic entailment or eliminate model
+hallucinations; factual before/after status comes from deterministic probes.
+Render model text as text, never executable HTML. Do not call the configured
+lab test indicator a proven malicious endpoint.
+
+* Provenance and reproducibility
+Fake-provider tests remain explicitly ~fake~; hosted calls remain ~hosted~.
+The live test uses a real owned lab client DNS probe, hosted Clef classification,
+explicit test-run approval, an actual OpenAI tool call into ~ActionService~,
+independent DNS verification, then deterministic cleanup/undo.
+#+begin_src sh
+RG_AGENT_LIVE=1 RG_LAB_DIR=/absolute/path/to/verified/lab RG_LAB_GROUP=1 \
+  bun --env-file=/absolute/path/to/rig/.env test tests/agent/live.test.ts
+#+end_src
+Do not run this concurrently with another resolver mutation or lab reset.
+It requires operator-authorized isolated lab scope. Unknown action state retains
+its SQLite journal. No private traffic or real malware is needed.
+
+First live integration [2026-10-09 Fri]: passed in 6.7 seconds. Clef classified
+the configured indicator suspicious; the OpenAI agent called ~get_trace~,
+~get_action_status~ and ~execute_approved~. The target changed resolved->blocked,
+benign DNS remained resolved, and cleanup restored the target. The explanation
+cited baseline, approval, durable execution intent and independently verified
+action traces. This is VM-live DNS evidence, not router-password hardening or
+physical Wi-Fi proof; those are separate work.
+
+Review regressions use a deliberately permissive counting executor to isolate
+the loop's own checks. ~bun tests/agent/check-guards.ts~ breaks five guards in
+temporary copies and requires each mutation to fail an assertion. Final code
+changes after the first live run remain offline-only until explicitly rerun.
+
+* Official references
+- [[https://developers.openai.com/api/docs/guides/function-calling][OpenAI function-calling flow and strict function schemas]]
+- [[https://openrouter.ai/docs/api_reference/responses/overview][OpenRouter stateless Responses transport]]
+- [[https://openrouter.ai/docs/api_reference/responses/tool-calling][OpenRouter function-call and output schema]]

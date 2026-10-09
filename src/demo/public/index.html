@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hedgerow | Live protection</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/" aria-label="Hedgerow home"><span class="hedge" aria-hidden="true">⌂</span> Hedgerow</a><span class="mode">Live demo</span></header>
+<main>
+  <div class="incident-workspace">
+    <section id="live-logs" aria-labelledby="logs-title">
+      <h1 id="logs-title">Live device logs</h1>
+      <p id="log-status" role="status">Connecting to Pi-hole…</p>
+      <div id="incident-groups" aria-label="Detected incidents"></div>
+      <div class="log-scroll"><table class="log-table"><thead><tr><th>Time</th><th>Query / client</th><th>Result</th><th>Incident</th></tr></thead><tbody id="captured-rows"></tbody></table></div>
+      <p id="log-link" class="digest"></p>
+      <div class="controls"><button data-command="observe">Generate test traffic</button><button class="secondary" data-command="classify">Analyze now</button></div>
+      <details><summary>Log details</summary><p>Source: Pi-hole query API, updated every two seconds. This demo uses one client and two test domains. Rows include test traffic and verification lookups.</p><p id="coverage"></p><p id="topology"></p></details>
+    </section>
+    <section class="agent-chat" aria-labelledby="incident-title">
+      <h2 id="incident-title">Hedgerow agent</h2>
+      <p id="message" role="status" aria-live="polite">Watching for incidents.</p>
+      <div id="evidence"></div><div id="judgments"></div>
+      <div id="chat-messages" role="log" aria-live="polite"></div>
+      <section id="approval" aria-label="Proposed response"></section>
+      <section id="verification" aria-label="Verification"></section>
+      <section id="interpretation" aria-label="Agent response"></section>
+      <form id="chat-form"><label for="chat-input" class="sr-only">Message Hedgerow</label><textarea id="chat-input" maxlength="1000" rows="2" placeholder="What happened? What should I do?"></textarea><button type="submit">Send</button></form>
+      <button class="secondary" data-command="propose">Review response</button>
+      <details id="response-history"><summary>Agent activity</summary><ol id="activity-rows"></ol></details>
+      <details><summary>Evidence timeline</summary><ol id="timeline"></ol></details>
+    </section>
+  </div>
+  <details class="router-panel"><summary id="router-title">Router security</summary><div id="router"></div></details>
+  <section id="guidance" aria-label="Reference guidance"></section>
+  <details><summary id="sponsors-title">Connected services</summary><div id="sponsors"></div></details>
+  <details><summary>Technical details</summary><pre id="raw"></pre></details>
+  <button class="secondary" data-command="reset">Reset demo view</button>
+  <footer><details><summary>About this demo</summary><p>Isolated lab, recorded measurements, scoped changes with approval. The Pi can host the controller; this view identifies its current deployment under Log details. DNS filtering does not end existing connections. Consumer-router compatibility and Wi-Fi protection have not been tested. Model responses are interpretations; verification shows what changed.</p></details></footer>
+</main></body></html>

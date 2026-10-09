@@ -1,0 +1,34 @@
+#+title: Hedgerow — copy-ready submission fields
+#+date: [2026-10-09 Fri 16:29 PDT]
+
+* One-sentence description
+Hedgerow is a plug-in security appliance that watches your home network, explains suspicious activity, and uses AI agents to make approved repairs and verify they worked.
+
+* Project description
+Your grandparents shouldn’t need to be network administrators to stay safe online. Hedgerow turns home-network security into a conversation: what happened, what should change, and did it work?
+
+Hedgerow captures device logs, uses Jev and Clef to assess suspicious activity, and gives an OpenAI agent narrowly scoped tools to respond. The owner approves the change; independent checks verify the result. An audit trail connects the original evidence to the action and its outcome.
+
+Our live demo follows two incidents end to end. First, a known weak password allows access to an OpenWrt router. Hedgerow rotates it, then confirms the old password fails and the replacement works. Next, a client queries a flagged domain. Hedgerow applies a temporary DNS block, verifies normal lookups still work, and demonstrates recovery by undoing the block.
+
+ClickHouse stores observations, MongoDB retains action audits, Senso supplies cited guidance, and Semgrep checks the code. A Raspberry Pi runs the controller, connected to an isolated lab over Ethernet.
+
+The prototype demonstrates real password changes and DNS enforcement in an owned lab. The next step is bringing that experience to supported household routers: plug it in, secure the basics, and keep watch.
+
+* Links
+- Repository: https://github.com/cosmicz/hedgerow.oc (private; operator must grant judges access).
+- Uploaded video: https://youtu.be/o8yUj5TYQcM .
+- Additional local video: ~private/demo/hedgerow-v0.1.mp4~ (90.04 seconds).
+- Current setup: [[file:../README.org][README]] and [[file:hybrid.org][Pi hybrid setup]].
+
+* Architecture
+Bun/TypeScript serves a local UI. Pi-hole logs and redacted OpenWrt authentication results feed Jev/Clef classification. An OpenAI agent uses bounded tools to execute exact approved proposals. SQLite owns action authority; independent probes verify changes and recovery. ClickHouse and MongoDB retain observations and audit projections. Senso provides cited guidance. The Pi runs the controller while the isolated resolver and clients run on the Mac, linked by direct Ethernet SSH tunnels.
+
+* Setup
+Use Bun 1.2.10 and bun install --frozen-lockfile. Follow README.org for pinned lab images and private environment variables. OpenRouter supplies Jev/Clef/OpenAI inference; Senso is optional. Local ClickHouse/MongoDB services back the audit views. docs/hybrid.org describes the Pi-hosted controller. Credentials and raw evidence are excluded from the repository.
+
+* Lessons
+Verification matters more than narration: login checks and DNS probes establish whether a repair worked. Background sponsor audits must never hold up recovery. Headless deployment needed explicit cloud-init validation and a frozen dependency lockfile. The product should lead with live logs and a useful conversation, not repeated implementation caveats.
+
+* Private operator fields
+Enter team names/emails, judge access, sponsor selections and gallery visibility in the form. Private repository URLs alone do not grant access. Semgrep CLI versus Guardian and indirect-provider prize eligibility remain organizer decisions. This file is not a submission receipt.

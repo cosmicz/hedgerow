@@ -1,0 +1,141 @@
+#+title: Hedgerow — understandable home-network defense
+#+date: [2026-10-09 Fri]
+
+An appliance prototype for households without a network administrator,
+designed to help owners harden supported routers, explain observations and
+approve independently verified protective actions. Supported-router management
+is a goal, not a capability demonstrated by the current component proofs.
+
+This branch contains tested DNS-action authority, bounded Jev/Clef classification
+and OpenAI tool orchestration. A local DNS demonstration UI now wires these
+components to actual owned-lab query collection and sponsor audit stores. The
+router UI completes a live seeded-credential attack, hosted classification,
+approved rotation and independently checked old/new authentication. Final
+recording and Pi-hosted integration remain in progress.
+See [[file:docs/submission.org][the evidence ledger and submission checklist]] for exact revisions and limits.
+
+* Run the local checks
+Tested with Bun 1.2.10 on macOS arm64; the components use its test runner and
+SQLite. The live lab additionally requires Docker Desktop with Compose v2,
+~jq~, ~curl~, ~openssl~, ~shasum~ and POSIX shell. Sponsor binary setup below
+is macOS arm64 only and also needs ~uvx~ and ~lsof~. Other host platforms are
+not covered by these packaging checks. Bun dependencies are locked in ~bun.lock~.
+These commands do not require API keys, start services or mutate a router:
+#+begin_src sh
+bun install --frozen-lockfile
+bun test
+bun run typecheck
+bun tests/agent/check-guards.ts
+bun src/decisions/evaluate.ts
+#+end_src
+Live tests are explicitly skipped by default. The evaluation prints a
+deterministic baseline and marks hosted models not-run without explicit opt-in.
+The mutation check creates disposable copies to prove five agent guards have
+effective tests; it does not alter this working tree.
+
+For hosted synthetic-only evaluation, put ~OPENROUTER_API_KEY~ in an ignored
+local ~.env~, then run:
+#+begin_src sh
+RG_MODEL_LIVE=1 bun src/decisions/evaluate.ts
+#+end_src
+This incurs a small provider charge and sends only fixed synthetic features.
+No raw domains, traffic, router credentials or household identities are needed.
+See [[file:docs/decisions.org][decision evaluation]] for failure accounting and benchmark limitations.
+
+* Run the local DNS demonstration
+Use only the isolated container lab in [[file:lab/README.org][lab setup]]. Its loaded image identity
+gate and isolation checks must pass first. The UI is not a production-router
+management interface. Supply the dedicated lab directory and verified group ID:
+#+begin_src sh
+RG_LAB_DIR="$PWD/lab" RG_LAB_GROUP=1 bun src/demo/server.ts
+#+end_src
+Open http://127.0.0.1:8787. The server reads the lab password from that directory's
+ignored ~.env~; ~OPENROUTER_API_KEY~ stays server-side. Bun reads the application
+~.env~, or use its ~--env-file=/private/path/to/.env~ option for an existing key.
+Never copy a key into the browser or commit it.
+
+Run the lab test, ask Jev/Clef, review the exact protection, approve it, ask
+OpenAI to apply it, inspect independent target/benign checks, then undo.
+The model cannot approve anything. Missing inference stays unavailable;
+it does not silently become a hosted result. Evidence expires after 60 seconds;
+start a new observation if an unexecuted proposal becomes stale.
+
+~private/demo/actions.sqlite~ retains authority and measured history. Only one
+server may use it: ~private/demo/server.lock~ fails closed on a second start.
+If a process crashed, verify it is stopped before removing its stale lock.
+On restart the server reconciles interrupted actions without replaying writes.
+Temporary denial expires through the running executor, not through a native
+Pi-hole TTL; keep the executor awake or use Undo before stopping it.
+Browser screenshots/evidence remain under ignored ~private/demo/~.
+
+To include local sponsor stores on macOS arm64, fetch and verify the pinned
+binaries into an ignored directory, then start loopback-only services:
+#+begin_src sh
+export RG_SPONSOR_TOOLS="$PWD/private/sponsor-tools"
+sh src/adapters/sponsors/tools/fetch.sh
+bun run sponsors:services start
+#+end_src
+Set ~RG_CLICKHOUSE_URL=http://127.0.0.1:18123~ and
+~RG_MONGO_URI=mongodb://127.0.0.1:27717~ when starting the demo server.
+~RG_SEMGREP_SCAN=1~ runs the pinned local Semgrep rules at startup and shows
+the scanned revision, dirty-worktree flag, file count and findings. The scan
+may require ~uvx~ and package access; an unavailable scan is never shown as passed.
+Missing stores use a visibly labelled, non-durable in-process fallback. They
+are audit projections, not execution authority. Runtime use and organizer
+sponsor eligibility are separate facts.
+
+Optional ~SENSO_API_KEY~ enables cited public reference guidance in the UI.
+At startup the server reuses/uploads the fixed demo-only guidance document and
+retrieves two fixed topics. It sends no observations, household traffic or
+credentials in document/query content. Results are cached for the session and
+labelled separately from measurements. Retrieval failure never blocks actions
+or Undo and is not replaced by a fabricated Senso result.
+
+Actual Pi-hole mutation tests require the separately reviewed isolated lab,
+its dedicated group, fixed owned target and operator authorization. See
+[[file:docs/actions.org][action setup/recovery]] and [[file:docs/agent.org][agent integration test prerequisites]]. Do not
+point these tests at a production or venue resolver.
+
+* Trust boundary
+Deterministic evidence and application policy govern proposal eligibility.
+Jev/Clef judgments annotate evidence; they cannot approve a change. The OpenAI
+agent has no approval or shell tool. Its execution requests go through durable
+exact-digest approval, scope, freshness, expiry and ownership checks.
+
+Independent target/benign DNS probes determine measured outcomes; generated
+explanation is separately labelled interpretation. Undo removes only our owned
+rule. DNS denial does not terminate existing connections or protect clients
+using other resolvers. Router compatibility, physical deployment and Wi-Fi
+security are not assumed. Captures and credentials stay local and untracked.
+
+* Router and physical-appliance status
+~RG_ROUTER_LAB=1~ enables the owned OpenWrt-userland container workflow.
+Load the exact public OpenWrt image before enabling it. Its upstream platform
+metadata is ~linux/aarch64_generic~, not the standard ~linux/arm64~ selector.
+The immutable manifest below was checked against the required config digest:
+#+begin_src sh
+mkdir -p private
+crane pull ghcr.io/openwrt/rootfs@sha256:f6dd33c1d9b7d6f1e0848f2fbb92b8d03fc9b425dc08c3574a44936b93133704 private/openwrt-rootfs.tar
+docker load -i private/openwrt-rootfs.tar
+docker image inspect sha256:537d90b97c6f0e99d3ced6af8c0dd1034370ee355ee00332bfa46935b843d767
+#+end_src
+This acquisition step requires host ~crane~ and registry access; it starts no
+router. The adapter always addresses the image by the enforced config digest.
+It uses fixed Docker commands, not a consumer-router API. The UI explicitly
+approves a single proposed password change; models receive only redacted facts.
+Live proof ~0eea938~ verified rejection of the old credential and acceptance of
+the replacement after an approved bounded-agent rotation. This proves only
+the disposable container workflow, not consumer-router compatibility.
+
+The Pi deployment uses direct-Ethernet SSH tunnels to the Mac-hosted lab.
+The physical Pi-hosted DNS cycle passed on deployed ~7a6401c~: both hosted
+classifiers, approved OpenAI execution, blocked target/working benign and
+verified undo. Probe evidence remains VM-live because the clients run on the Mac.
+~RG_UI_ORIGIN=http://127.0.0.1:8788~ permits that exact forwarded browser origin;
+the service itself still listens only on Pi loopback port 8787. Set
+~RG_DEPLOYMENT=pi-hybrid~ only for that verified topology.
+[[file:docs/hybrid.org][Hybrid deployment notes]] explain the split.
+
+The event tracker is internal coordination, not a runtime dependency.
+Publication and submission require the operator's decision. No open-source
+license has been selected; do not infer a license grant from source availability.

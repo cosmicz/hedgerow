@@ -1,0 +1,94 @@
+#+title: Hedgerow — submission handoff
+#+date: [2026-10-09 Fri 16:30 PDT]
+#+todo: TODO ON ACCEPT WAIT | DONE
+
+* ON Current package
+Copy-ready form text is in [[file:submission-fields.org][submission fields]].
+Summary: 170/300 characters. Description: 1255/1500. Architecture, setup and
+lessons are each under 1200 characters. This is not a submission receipt.
+
+- Private repository: https://github.com/cosmicz/hedgerow.oc .
+- Uploaded v0.0: https://youtu.be/o8yUj5TYQcM (operator-supplied unlisted link).
+- Local v0.1: ~private/demo/hedgerow-v0.1.mp4~, 90.04 seconds, H.264 1440x1012.
+- Editing clips: ~private/demo/v0.1-clips/~, five ordered clips, decode checked.
+- v0.0 covers router rotation, DNS, guidance, audit and undo in 180.04 seconds.
+- v0.1 shows captured DNS rows, Jev/Clef, approval, OpenAI response and recovery.
+- Both are actual automated live UI captures with automated test approval,
+  not human-click footage. Raw source/proof files remain private.
+- The latest incident/chat UI is additional work and is not in either video.
+
+* Verified results
+| Capability | Runtime/revision | Result |
+|------------+------------------+--------|
+| Router | 0eea938 | Seeded login accepted; hosted Jev/Clef; approved OpenAI rotation; old rejected/new accepted |
+| DNS and sponsor audit | d93d0db | Query captured; both classifiers; agent deny; benign preserved; undo; matching ClickHouse/Mongo records |
+| Senso UI | e54d98e | Two fixed public topics, three cited passages each |
+| Physical Pi controller | 7a6401c | Jev/Clef, OpenAI, DNS deny/undo and unaffected control client over direct Ethernet |
+| v0.0 video | 2a61185 | Full decode passes; real router/DNS/guidance/audit/recovery frames inspected |
+| v0.1 video | 35cc08e | Actual query155 linked to model results and agent tools; block and recovery verified |
+| Focused live-log checks | 5ed7ff2 | 17 tests,185 assertions; strict TypeScript; Claude post-merge review fixes applied |
+
+The Pi runs the controller; lab resolver/client probes remain Mac-hosted
+containers. Router credential rotation uses fixed Docker commands inside an
+OpenWrt userland container, not a consumer-router management API.
+Current service availability is separate from the retained successful proof.
+No venue traffic, wireless attack, universal compatibility or independent
+malware detection is claimed.
+
+Private artifact hashes:
+- Router proof: ~2165fe021e69ed09951c89cd3e217de19b05d3bc0090235578bbc1a4d0b58571~.
+- DNS/sponsors: ~47b920be26135d869fcb84c11fff32df84eeffb798b8421afd5d54c86e84ac2b~.
+- Senso: ~507fdd8b8f7311772f9719c8366d360ab469b8e3bd835a3047d25b34e0866a44~.
+- Pi: ~fba1fb5e832f5667d21596a823eefeaa8431eee998fdc21cf44a553ca0ab3da1~.
+- v0.0 video: ~83daa2d0b44496380960de8c041d49737cdb7baa3823a2731417060b0b0067c4~.
+- v0.1 video: ~371fe11b2e3a616e47ad07b6ff78e4bef340dcea6ebd823545e4d3df2d2eb0e0~.
+- v0.1 state: ~ff74fda6ab35cd4f288dfd09e0fb95888a6f396bb877a26005701b0deb4ef1ba~.
+
+v0.1 paused after approval because the recording driver read stale browser
+state. Refresh resumed the same fresh approved digest, and the action and
+undo passed. The driver is corrected. No invented or substituted evidence.
+A final exhaustive suite was not run, per operator crunch-time policy;
+focused authority, HTTP, controller, collector and recording checks were used.
+
+* Tools and sponsor accounting
+| Tool | Actual role | Counting limit |
+|------+-------------+----------------|
+| ClickHouse26.8 | Observation/audit queries | Listed challenge sponsor |
+| Senso | Cited public guidance in UI | Listed challenge sponsor |
+| Semgrep CLI1.180.0 | Clean-revision source scan;48 files,zero findings at960434e | Listed sponsor; CLI vs Guardian eligibility unconfirmed |
+| MongoDB8.0.4 | Durable audit projection | Event partner; counting unconfirmed |
+| OpenAI gpt-5.4-mini via OpenRouter | Bounded mitigation and trace explanation | Partner/indirect-provider eligibility unconfirmed |
+| Jev1.13 and Clef via OpenRouter | Hosted classifications | Small lab proofs, not general accuracy claims |
+
+Also used: Bun1.2.10,TypeScript,SQLite,Pi-hole,OpenWrt,Docker Desktop,Pi5,SSH.
+AkashML was not integrated. Raspberry Pi is not the event sponsor named Pi.
+Signups, logos and health probes alone are not integration proof.
+
+* Operator checklist
+Requirements recorded from [[https://tokensand.com/cyberhack][challenge]] and
+[[https://tokensand.com/cyberhack/submit][submission form]] earlier today:
+16:30 Pacific deadline, up to four people, working event-built project,
+three sponsor tools, judge-accessible GitHub, shareable video and team contacts.
+The public form recommends roughly three minutes and offers private access
+instructions/gallery opt-out. Public gallery initializes true: choose deliberately.
+
+- [X] Working assembled demonstrations and sponsor proof retained.
+- [X] Uploaded backup link and checked local second video.
+- [X] Copy-ready bounded form fields.
+- [X] Standalone README and Pi hybrid setup.
+- [ ] Latest code push and remote SHA verification.
+- [ ] Operator confirms judge repository access and sponsor selections.
+- [ ] Operator enters team/contact details privately.
+- [ ] Operator chooses video/gallery settings and checks form preview.
+- [ ] Operator submits and retains receipt.
+
+A private repository URL alone does not grant judges access. No invitation,
+public visibility change or submission is implied by local completion.
+Keep credentials, raw traffic and personal details out of public artifacts.
+
+* Setup and contracts
+- [[file:../README.org][Standalone setup]]
+- [[file:hybrid.org][Pi hybrid topology]]
+- [[file:actions.org][Action authority and recovery]]
+- [[file:decisions.org][Model evidence boundary]]
+- [[file:agent.org][Bounded tools and explanations]]

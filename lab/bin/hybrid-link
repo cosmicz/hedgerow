@@ -1,0 +1,32 @@
+#!/bin/sh
+# Hybrid topology link: Pi runs the Hedgerow agent, the Mac keeps the isolated lab.
+# Opens one SSH session to the Pi over the direct cable carrying:
+#   -R 8053  Pi 127.0.0.1:8053 -> Mac console -> Pi-hole API   (agent's RG_PIHOLE_API_BASE)
+#   -R 8777  Pi 127.0.0.1:8777 -> Mac probe helper              (agent's DNS verification)
+#   -L 127.0.0.1:8788 -> Pi 127.0.0.1:8787   (Pi UI at http://127.0.0.1:8788/ ; server gets RG_UI_ORIGIN=http://127.0.0.1:8788)
+# Extra -R forwards (sponsor stores on the Mac) via RG_HYBRID_EXTRA, e.g. "-R 18123:127.0.0.1:18123".
+# Refuses unless the route to the Pi is an active direct Ethernet interface. No venue traffic.
+set -eu
+HOST=${RG_PI_HOST:-cosmic@10.77.1.2}; PI_IP=${HOST#*@}
+# Local bind for the Pi UI. 8788 keeps 127.0.0.1:8787 free for the Mac's own server;
+# the Pi server is told its browser origin with RG_UI_ORIGIN=http://127.0.0.1:8788.
+UI_BIND=${RG_HYBRID_UI_BIND:-127.0.0.1:8788}
+LAB_DIR=$(cd "$(dirname "$0")/.." && pwd)
+: "${RG_PI_INTERFACE:?Set the operator-verified direct Ethernet interface (tested en11)}"
+[ "$PI_IP" = 10.77.1.2 ] || { echo "only the configured direct lab peer is supported" >&2; exit 1; }
+IFACE=$(route -n get "$PI_IP" 2>/dev/null | awk '/interface:/{print $2}')
+[ "$IFACE" = "$RG_PI_INTERFACE" ] || { echo "route does not use the approved direct interface" >&2; exit 1; }
+networksetup -getairportnetwork "$IFACE" 2>&1 | grep -q 'not a Wi-Fi interface' || { echo "Wi-Fi or unknown interface refused" >&2; exit 1; }
+ifconfig "$IFACE" | grep -q 'status: active' || { echo "direct Ethernet inactive" >&2; exit 1; }
+ifconfig "$IFACE" | grep -qE 'media: .*base(T|TX)' || { echo "wired Ethernet media required" >&2; exit 1; }
+ifconfig "$IFACE" | grep -q 'inet 10.77.1.1 netmask 0xffffff00' || { echo "expected direct /24 address is absent" >&2; exit 1; }
+if route -n get "$PI_IP" 2>/dev/null | grep -q GATEWAY; then echo "gateway route refused" >&2; exit 1; fi
+KH=${RG_PI_KNOWN_HOSTS:-$HOME/.ssh/known_hosts}
+cd "$LAB_DIR"
+bun run bin/probe-helper.ts & HELPER=$!
+trap 'kill $HELPER 2>/dev/null' EXIT INT TERM
+sleep 1
+echo "tunnels up over $IFACE; Pi UI: http://$UI_BIND/  (Ctrl-C ends helper and tunnels)"
+# shellcheck disable=SC2086
+ssh -N -o BatchMode=yes -o StrictHostKeyChecking=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o UserKnownHostsFile="$KH" \
+  -R 8053:127.0.0.1:8053 -R 8777:127.0.0.1:8777 -L "$UI_BIND":127.0.0.1:8787 ${RG_HYBRID_EXTRA:-} "$HOST"

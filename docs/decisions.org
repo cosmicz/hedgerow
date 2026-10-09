@@ -1,0 +1,67 @@
+#+title: Bounded decision evaluation
+
+* Contract
+~src/decisions/~ is advisory only and imports no action executor. It accepts
+fresh evidence references plus a closed projection of aggregate lab facts;
+it never transmits raw domains, IPs, hostnames, logs or credentials. Model
+judgments retain local evidence IDs but cannot grant approval or pick targets.
+Malformed responses, unavailable providers, stale evidence and timeout produce
+~unknown / ask~. Domain novelty alone is not treated as malware by the baseline.
+
+OpenRouter is operator-selected. The fixed HTTPS Decisions endpoint is
+~https://openrouter.ai/api/alpha/decisions~, with allowlisted models
+~typesafe/jev-1.13~, ~cloudflare/clef~ and ~cloudflare/clef-flash~. Redirects
+are refused. Returned categorical probabilities are checked for bounds, sum
+and consistency with the selected choice. Vendor confidence is not calibrated
+for this home-network task. A separate OpenAI agent/explanation lane is planned;
+Jev/Clef do not generate explanations.
+
+* Local configuration and evaluation
+Place ~OPENROUTER_API_KEY~ in the ignored app-root ~.env~ (see ~.env.example~).
+Do not paste keys into chat, browser code or proof artifacts. Without the key
+and explicit live opt-in, the evaluator reports both models ~not-run~.
+#+begin_src sh
+bun test tests/decisions
+bun src/decisions/evaluate.ts
+RG_MODEL_LIVE=1 bun src/decisions/evaluate.ts
+#+end_src
+The live command makes at most sixteen classifications over eight fixed
+synthetic cases, with stale/empty input rejected locally and five-second timeouts.
+It records actual returned model/provider, reported cost if available, measured
+latency, false positives/negatives and abstention separately. No private network
+traffic is needed. No automatic retries or fallback to another paid model.
+
+The deterministic baseline's eight-case agreement verifies policy plumbing,
+not real threat-detection performance. Fake-provider tests verify transport and
+failure handling, not Jev/Clef accuracy.
+
+* First hosted evaluation [2026-10-09 Fri]
+Operator supplied the key via the rig-root ignored ~.env~; Bun's explicit
+~--env-file=/absolute/path/to/rig/.env~ loads it without copying it into this repo.
+The original ~c7efb9c~ evaluator sent seven cases per model and rejected stale
+evidence locally. Jev ~typesafe/jev-1.13-20260917~ agreed on five of seven hosted
+cases: it abstained on one expected-benign case and called the empty case benign.
+Clef ~cloudflare/clef~ agreed on seven of seven. Both flagged the two configured
+indicator cases. Providers were TypeSafe for Jev, Cloudflare and PrimeIntellect
+for Clef. Reported aggregate request costs were USD 0.000134484 and 0.00043248.
+Pipeline p50/p95 were 273/509 ms for Jev, 492/1248 ms for Clef (including one
+local rejection each). These small controlled results are not accuracy claims.
+
+The empty-case result triggered a deterministic no-observations guard, tested
+red then green. Follow-up metrics separate not-called/succeeded/failed requests,
+provider-only latency and reported cost from local decisions. Do not erase the
+original result or attribute the new local guard's behavior to either model.
+
+Review correction: failed inference is neither an abstention nor a correct
+unknown answer. The evaluator reports ~inference_succeeded~, ~inference_failed~,
+~not_called~ and a separate ~hosted_agreement~ numerator/denominator/rate over
+successful hosted calls only. ~correct~ includes local deterministic guards but
+never failed inference; no-call local behavior is not credited to a model.
+An always-failing provider therefore has zero hosted cases (rate null), six
+failures, and only two correct local guards on the eight-case fixture set.
+
+* Sources verified [2026-10-09 Fri]
+- [[https://openrouter.ai/docs/guides/community/jev][OpenRouter Jev guide and endpoint distinction]]
+- [[https://openrouter.ai/docs/api/api-reference/alphadecisions/submit-a-decisions-request][Decisions request/answer schema]]
+- [[https://openrouter.ai/typesafe/jev-1.13][Jev model availability]]
+- [[https://openrouter.ai/cloudflare/clef][Clef model availability and input truncation caveat]]

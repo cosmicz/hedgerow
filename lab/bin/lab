@@ -1,0 +1,162 @@
+#!/bin/sh
+# Hedgerow lab driver. POSIX sh. Usage: lab/bin/lab <command>
+#   init        create lab/.env with a generated Pi-hole API password (idempotent)
+#   up|down     start/stop the lab (down keeps volumes)
+#   reset       down -v, then up: the reproducible baseline
+#   verify-images  fail closed unless every loaded image ID matches lab/images.lock
+#   sponsor-up|sponsor-down   start/stop the optional ClickHouse profile through the same gate
+#   provision   idempotently create the dedicated Pi-hole group and register the owned client
+#   baseline    print and store a JSON baseline (image ids, version, config, group, clients, deny count)
+#   check       run isolation + smoke + deny round-trip checks
+#   isolation|smoke|roundtrip   run one check
+#   env         print shell exports an application needs to reach the lab
+#   status|logs|exec ...        thin wrappers over docker compose
+set -eu
+LAB_DIR=$(cd "$(dirname "$0")/.." && pwd)
+cd "$LAB_DIR"
+COMPOSE="docker compose --project-directory $LAB_DIR"
+STATE="$LAB_DIR/.state"
+
+need_env() {
+  [ -f "$LAB_DIR/.env" ] || { echo "lab/.env missing; run: lab/bin/lab init" >&2; exit 2; }
+  set -a; . "$LAB_DIR/.env"; set +a
+}
+
+cmd_init() {
+  if [ -f "$LAB_DIR/.env" ]; then echo "lab/.env exists; keeping it"; return 0; fi
+  pw=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-32)
+  umask 077
+  printf 'PIHOLE_API_PASSWORD=%s\nRG_PIHOLE_HOST_PORT=8053\nRG_CLICKHOUSE_HOST_PORT=8123\n' "$pw" > "$LAB_DIR/.env"
+  echo "wrote lab/.env (ignored). Password not shown."
+}
+
+# Compose references images by tag; tags are mutable. Refuse to start unless the
+# locally loaded image for every tag has exactly the locked image ID (config
+# digest). Works offline with host-side loaded images; also refuses a tag that
+# would trigger a pull of unverified content.
+cmd_verify_images() {
+  rc=0
+  while IFS="$(printf '\t')" read -r tag want; do
+    case "$tag" in ''|'#'*) continue ;; esac
+    have=$(docker image inspect "$tag" --format '{{.Id}}' 2>/dev/null || echo missing)
+    if [ "$have" = "$want" ]; then printf 'ok   %s %s\n' "$tag" "${want#sha256:}" | cut -c1-80
+    else printf 'FAIL %s: have %s want %s\n' "$tag" "$have" "$want" >&2; rc=1; fi
+  done < "$LAB_DIR/images.lock"
+  [ "$rc" -eq 0 ] || { echo "image identity mismatch; refusing to start (see lab/images.lock)" >&2; return 1; }
+  # Every image referenced by compose (all profiles) must be locked. Compose
+  # discovery must succeed and be non-empty, and matching is exact whole-field
+  # fixed-string, never a regex.
+  images=$($COMPOSE --profile sponsor config --images 2>&1) || { echo "FAIL cannot enumerate compose images: $images" >&2; return 1; }
+  [ -n "$images" ] || { echo "FAIL compose reported no images; refusing" >&2; return 1; }
+  locked=$(grep -v '^#' "$LAB_DIR/images.lock" | cut -f1)
+  printf '%s\n' "$images" | sort -u | while IFS= read -r img; do
+    printf '%s\n' "$locked" | grep -Fqx -- "$img" || { echo "FAIL compose image not in images.lock: $img" >&2; exit 1; }
+  done || return 1
+}
+# Gated sponsor-profile launch: same identity check as the core lab.
+cmd_sponsor_up() {
+  need_env; cmd_verify_images
+  $COMPOSE --profile sponsor up -d --wait --wait-timeout 180 clickhouse
+  # Container health precedes HTTP readiness; poll from the lab client, never from the host.
+  i=0; while [ $i -lt 30 ]; do
+    v=$($COMPOSE exec -T client sh -c 'wget -q -T 3 -O - "http://10.77.0.90:8123/?query=SELECT%20version()"' 2>/dev/null) && { echo "clickhouse ready: $v (lab-internal 10.77.0.90:8123)"; return 0; }
+    i=$((i+1)); sleep 2
+  done
+  echo "clickhouse container up but HTTP not ready after 60 s" >&2; return 1
+}
+cmd_sponsor_down() { need_env; $COMPOSE --profile sponsor stop clickhouse; $COMPOSE --profile sponsor rm -f clickhouse; }
+cmd_up()    { need_env; cmd_verify_images; $COMPOSE up -d --wait --wait-timeout 120 "$@"; cmd_provision; }
+cmd_down()  { need_env; $COMPOSE down --remove-orphans; }
+cmd_reset() { need_env; cmd_verify_images; $COMPOSE down -v --remove-orphans; cmd_up; }
+
+api_session() { # sets SID and BASE; caller must api_end
+  BASE="http://127.0.0.1:${RG_PIHOLE_HOST_PORT:-8053}/api"
+  SID=$(curl -sS --max-time 10 -X POST "$BASE/auth" -H 'content-type: application/json' \
+        --data "{\"password\":$(printf '%s' "$PIHOLE_API_PASSWORD" | jq -Rs .)}" | jq -r '.session.sid // empty')
+  [ -n "$SID" ] || { echo "API auth failed" >&2; exit 1; }
+}
+api_end() { curl -sS --max-time 10 -o /dev/null -X DELETE "$BASE/auth" -H "X-FTL-SID: $SID"; }
+api_get() { curl -sS --max-time 10 "$BASE$1" -H "X-FTL-SID: $SID"; }
+api_post() { curl -sS --max-time 10 -X POST "$BASE$1" -H "X-FTL-SID: $SID" -H 'content-type: application/json' --data "$2"; }
+
+LAB_GROUP=rg-lab
+LAB_CLIENT=10.77.0.100
+LAB_CONTROL_CLIENT=10.77.0.101
+
+cmd_provision() {
+  need_env; mkdir -p "$STATE"; api_session
+  gid=$(api_get "/groups/$LAB_GROUP" | jq -r '.groups[0].id // empty')
+  if [ -z "$gid" ]; then
+    api_post /groups "{\"name\":\"$LAB_GROUP\",\"comment\":\"Hedgerow owned lab clients\",\"enabled\":true}" | jq -e '.processed.errors == []' >/dev/null
+    gid=$(api_get "/groups/$LAB_GROUP" | jq -r '.groups[0].id // empty')
+  fi
+  [ -n "$gid" ] && [ "$gid" -ge 1 ] || { echo "provision: group id invalid: [$gid]" >&2; api_end; exit 1; }
+  have=$(api_get "/clients/$LAB_CLIENT" | jq -r '.clients[0].client // empty')
+  if [ -z "$have" ]; then
+    api_post /clients "{\"client\":\"$LAB_CLIENT\",\"comment\":\"rg-lab owned client container\",\"groups\":[$gid]}" | jq -e '.processed.errors == []' >/dev/null
+  fi
+  cgroups=$(api_get "/clients/$LAB_CLIENT" | jq -c '.clients[0].groups')
+  api_end
+  jq -n --arg g "$LAB_GROUP" --argjson gid "$gid" --arg c "$LAB_CLIENT" --argjson cg "$cgroups" --arg ctl "$LAB_CONTROL_CLIENT" \
+     '{group:$g, group_id:$gid, client:$c, client_groups:$cg, control_client:$ctl}' | tee "$STATE/provision.json"
+}
+
+cmd_env() {
+  need_env
+  gid=$(jq -r '.group_id // empty' "$STATE/provision.json" 2>/dev/null || true)
+  printf 'export RG_PIHOLE_API_BASE=http://127.0.0.1:%s/api\n' "${RG_PIHOLE_HOST_PORT:-8053}"
+  printf 'export RG_PIHOLE_API_PASSWORD=%s\n' "$PIHOLE_API_PASSWORD"
+  printf 'export RG_PIHOLE_GROUP=%s\nexport RG_PIHOLE_GROUP_ID=%s\n' "$LAB_GROUP" "${gid:-UNPROVISIONED}"
+  printf 'export RG_LAB_CLIENT=%s\nexport RG_LAB_CONTROL_CLIENT=%s\n' "$LAB_CLIENT" "$LAB_CONTROL_CLIENT"
+  printf 'export RG_LAB_SCOPE=lab:rg-lab\n'
+  printf 'export RG_LAB_FLAGGED=flagged.lab.test\nexport RG_LAB_BENIGN=benign.lab.test\n'
+}
+
+cmd_baseline() {
+  need_env
+  mkdir -p "$STATE"
+  base="http://127.0.0.1:${RG_PIHOLE_HOST_PORT:-8053}/api"
+  sid=$(curl -sS --max-time 10 -X POST "$base/auth" -H 'content-type: application/json' \
+        --data "{\"password\":$(printf '%s' "$PIHOLE_API_PASSWORD" | jq -Rs .)}" | jq -r '.session.sid // empty')
+  [ -n "$sid" ] || { echo "baseline: API auth failed" >&2; exit 1; }
+  version=$(curl -sS --max-time 10 "$base/info/version" -H "X-FTL-SID: $sid")
+  hosts=$(curl -sS --max-time 10 "$base/config/dns/hosts" -H "X-FTL-SID: $sid" | jq -c '.config.dns.hosts')
+  mode=$(curl -sS --max-time 10 "$base/config/dns/blocking/mode" -H "X-FTL-SID: $sid" | jq -r '.config.dns.blocking.mode')
+  deny=$(curl -sS --max-time 10 "$base/domains/deny/exact" -H "X-FTL-SID: $sid" | jq -c '[.domains[].domain]')
+  groups=$(curl -sS --max-time 10 "$base/groups" -H "X-FTL-SID: $sid" | jq -c '[.groups[] | {id, name}]')
+  clients=$(curl -sS --max-time 10 "$base/clients" -H "X-FTL-SID: $sid" | jq -c '[.clients[] | {client, groups}]')
+  curl -sS --max-time 10 -o /dev/null -X DELETE "$base/auth" -H "X-FTL-SID: $sid"
+  images=$($COMPOSE ps --format json | jq -s -c '[.[] | {service: .Service, image: .Image}]')
+  ids=$(for img in $(echo "$images" | jq -r '.[].image'); do docker image inspect "$img" --format '{"image":"{{index .RepoTags 0}}","id":"{{.Id}}","arch":"{{.Architecture}}"}'; done | jq -s -c .)
+  cfg_sha=$($COMPOSE config 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
+  ts=$(date -u +%Y%m%dT%H%M%SZ)
+  out=$(jq -n --arg ts "$ts" --arg cfg "$cfg_sha" --argjson ver "$version" --argjson hosts "$hosts" \
+        --arg mode "$mode" --argjson deny "$deny" --argjson images "$ids" --argjson groups "$groups" --argjson clients "$clients" \
+        '{recorded_at:$ts, mode:"live", scope:"lab:rg-lab", substrate:"docker-compose/Docker Desktop", compose_config_sha256:$cfg, images:$images, pihole_version:($ver.version), dns_hosts:$hosts, blocking_mode:$mode, groups:$groups, clients:$clients, deny_exact:$deny}')
+  printf '%s\n' "$out" | tee "$STATE/baseline-$ts.json" > "$STATE/baseline-latest.json"
+  cat "$STATE/baseline-latest.json"
+}
+
+run_check() { sh "$LAB_DIR/test/$1"; }
+cmd_check() { rc=0; for c in check-images.sh check-isolation.sh check-smoke.sh check-deny-roundtrip.sh; do run_check "$c" || rc=1; done; return $rc; }
+
+case "${1:-}" in
+  init) cmd_init ;;
+  up) shift; cmd_up "$@" ;;
+  down) cmd_down ;;
+  reset) cmd_reset ;;
+  verify-images) cmd_verify_images ;;
+  sponsor-up) cmd_sponsor_up ;;
+  sponsor-down) cmd_sponsor_down ;;
+  provision) cmd_provision ;;
+  baseline) cmd_baseline ;;
+  env) cmd_env ;;
+  check) cmd_check ;;
+  isolation) run_check check-isolation.sh ;;
+  smoke) run_check check-smoke.sh ;;
+  roundtrip) run_check check-deny-roundtrip.sh ;;
+  status) $COMPOSE ps ;;
+  logs) shift; $COMPOSE logs "$@" ;;
+  exec) shift; $COMPOSE exec "$@" ;;
+  *) sed -n '2,14p' "$0"; exit 2 ;;
+esac

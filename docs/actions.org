@@ -1,0 +1,66 @@
+#+title: Approved DNS action contract
+
+* Intended loop
+~ActionService~ is the local execution authority. The caller supplies a fixed
+~Policy~, a local ~SqliteLedger~, a ~DnsAdapter~, an independent DNS verifier,
+an injected clock and the currently valid evidence revision. Models cannot
+choose a resolver, group, target or credential. The server derives those fields
+from its configured lab and presents the exact proposal for explicit approval.
+
+~propose~ persists the immutable proposal and returns its SHA-256 digest.
+~approve(digest, operator)~ binds approval to that digest. ~execute(digest)~
+atomically claims execution, records durable intent, checks for existing rules,
+checks baseline DNS, creates a scoped rule and verifies DNS from the owned
+client. Duplicate execution cannot create a second rule for the same digest.
+~undo(digest)~ preserves preexisting/changed rules and removes only a matching
+ownership marker, domain and group set. It checks DNS restoration separately.
+
+* Journal and recovery
+The SQLite journal uses WAL, full synchronization and compare-and-set status
+transitions. Keep it outside the published source tree. Sponsor stores may
+mirror records for audit queries; they grant no action authority.
+~SqliteLedger(path, now)~ accepts an injected event clock (default ~Date.now~).
+~history(digest)~ retains each supplied verification with its transition time,
+including both denied and restored DNS states. Transitions without a probe
+retain the last known verification in the current record, not a new health
+claim. Old journals migrate additively; unavailable historical event timestamps
+and verification remain null rather than being invented.
+
+At exclusive service startup call ~reconcile(true)~ before accepting requests.
+It marks interrupted execution ambiguous; it never repeats a create request.
+During normal operation call ~reconcile()~ periodically to remove expired owned
+rules. A failed/ambiguous rollback remains visible for inspection rather than
+being silently retried. Repeated creation after uncertainty requires a new
+operator-reviewed proposal after inspecting/resetting the lab.
+
+The host must remain awake for timely expiry. After downtime, expiry is
+reconciled when the service restarts. This is not a resolver-native TTL.
+
+* Live lab
+~PiholeAdapter~ accepts a loopback API URL, fixed ~.test~ domain and a dedicated
+non-default group. HTTP is restricted to the explicitly isolated local lab;
+physical deployment needs a separate verified transport/installation contract.
+Credentials and session headers stay in the local executor. Redirects are
+rejected and request errors omit response bodies and credentials.
+
+~createLabVerifier~ invokes the lab's fixed DNS probe from its owned client;
+it does not use the mutation response as proof. Rule reloads are asynchronous,
+so it retries reads briefly. Target names and resolver address are fixed.
+Mode is ~vm-live~, with topology explicitly described as isolated containers
+inside Docker Desktop's Linux VM. It is not physical Wi-Fi evidence.
+
+Pi-hole has no compare-and-delete transaction. This demo assumes exclusive
+management of the dedicated lab instance while an action runs. A last-moment
+external edit between ownership check and delete cannot be excluded by this API.
+
+* Verification
+Offline: ~bun test tests/actions~. Live, after the lab owner publishes its
+verified group and readiness:
+#+begin_src sh
+RG_LIVE_TEST=1 RG_LAB_DIR=/absolute/path/to/verified/lab RG_LAB_GROUP=1 \
+  bun test tests/actions/live.test.ts
+#+end_src
+The live test approves one temporary exact-domain rule, verifies the target is
+denied and benign DNS succeeds, then undoes and checks restoration. Unknown
+outcomes retain their temporary journal for inspection. No venue or production
+resolver is an allowed target.

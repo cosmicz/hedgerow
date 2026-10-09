@@ -1,0 +1,85 @@
+#+title: Pi controller with an isolated Mac lab
+
+* Tested split
+The Pi 5 runs Bun and the application controller. Docker Desktop on the Mac
+hosts the isolated Pi-hole/client lab. Direct Ethernet carries SSH tunnels:
+Pi loopback 8053 -> Mac Pi-hole API, 8777 -> fixed DNS probe helper, 18123 ->
+ClickHouse, 27717 -> MongoDB. Mac loopback 8788 forwards to Pi loopback 8787.
+The Pi uses its own internet uplink for explicitly configured provider calls.
+No venue bridging, radio attack, passive capture or whole-network visibility.
+
+The router credential demonstration still runs on the Mac. Leave
+~RG_ROUTER_LAB~ unset on the Pi; its Docker runner is not a remote router API.
+The Pi controller is physical; the measured DNS clients/probes are VM-live.
+
+* Deployment contract
+Provision the owned Pi for SSH key access and a stable directly connected
+Ethernet address first. Verify the host key independently; do not disable SSH
+host-key checking. This repository does not authorize erasing a card.
+
+Deploy an exact application commit to ~/opt/hedgerow/app~ on the Pi, then run
+~bun install --frozen-lockfile~ with Bun 1.2.10. This step is required:
+runtime auto-install without node_modules selected an incompatible MongoDB
+major version during bring-up. The tested lockfile resolves MongoDB 6.21.0.
+
+Provide a private ~/opt/hedgerow/lab/.env~ containing only the dedicated
+~PIHOLE_API_PASSWORD~. Install ~lab/remote/dnsq.sh~ as
+~/opt/hedgerow/lab/test/dnsq.sh~. Put only required provider keys and runtime
+variables in a root-owned mode-0600 ~/etc/hedgerow/env~; never copy the whole
+development environment or display key values.
+
+Required runtime variables:
+#+begin_example
+RG_LAB_DIR=/opt/hedgerow/lab
+RG_LAB_GROUP=1
+RG_UI_ORIGIN=http://127.0.0.1:8788
+RG_DEPLOYMENT=pi-hybrid
+RG_CLICKHOUSE_URL=http://127.0.0.1:18123
+RG_MONGO_URI=mongodb://127.0.0.1:27717
+OPENROUTER_API_KEY=<private>
+SENSO_API_KEY=<private>
+#+end_example
+Group 1 is the tested lab group; verify the actual provisioned ID.
+
+On the Mac, set ~RG_PI_HOST~ to the owned SSH user/address and
+~RG_PI_KNOWN_HOSTS~ to the verified host-key file. From the application root:
+#+begin_src sh
+export RG_PI_HOST=cosmic@10.77.1.2
+export RG_PI_INTERFACE=en11 # verify this is your direct Ethernet, not Wi-Fi
+export RG_PI_KNOWN_HOSTS=/absolute/path/to/verified_known_hosts
+RG_HYBRID_EXTRA="-R 18123:127.0.0.1:18123 -R 27717:127.0.0.1:27717" sh lab/bin/hybrid-link
+#+end_src
+The helper accepts only fixed lab names and the two owned test clients.
+Keep the link running; it does not start the Pi controller. All paths above
+are absolute: the tildes delimit Org inline code, not home-directory prefixes.
+The tested tree is /opt/hedgerow, not /home/cosmic/opt/hedgerow.
+Run as the provisioned ~cosmic~ user, with write access to app/private for the
+audit databases. Use a systemd unit to load the root-owned private environment;
+systemd reads EnvironmentFile before dropping to the runtime user:
+#+begin_example
+[Unit]
+Description=Hedgerow hybrid demo
+After=network-online.target
+[Service]
+Type=simple
+User=cosmic
+WorkingDirectory=/opt/hedgerow/app
+EnvironmentFile=/etc/hedgerow/env
+ExecStart=/opt/hedgerow/bun/bun run src/demo/server.ts
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+#+end_example
+This is the ~hedgerow-demo.service~ hybrid service contract, not the separate
+Pi-local Docker deployment. The operator installs/restarts the unit; retain
+existing app/private databases and credentials when updating code. Do not run
+two controllers against the same lab simultaneously. Verify ~ss -ltn~: application/provider
+tunnel ports must be loopback-only. Access http://127.0.0.1:8788 on the Mac.
+
+* Verification and recovery
+Only one controller may mutate the shared lab at a time. Run observation,
+classification, proposal, explicit approval, execute and undo. Verify
+target blocked / benign resolved, then both resolved after undo. Do not
+terminate the tunnel while an action is active: expiry needs a running
+controller and working management path. A failed or uncertain result requires
+inspection, not blind retry. Keep the private local SQLite journal intact.

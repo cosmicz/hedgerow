@@ -1,0 +1,19 @@
+{
+  "name": "router-guard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json",
+    "sponsors:services": "sh src/adapters/sponsors/tools/services.sh",
+    "sponsors:proof": "bun run src/adapters/sponsors/proof.ts",
+    "senso:proof": "bun run src/adapters/sponsors/senso/proof.ts"
+  },
+  "dependencies": {
+    "mongodb": "6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,142 @@
+# Hedgerow isolated container lab. See lab/README.org for the contract.
+# Everything sits on one `internal: true` network: no default route, no NAT,
+# no egress, no venue traffic. Management reaches Pi-hole only through a host
+# port bound to 127.0.0.1. Images are referenced by pinned tag; lab/bin/lab
+# baseline records the loaded image IDs (config digests) as evidence.
+name: rg-lab
+
+networks:
+  lab:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.77.0.0/24
+  # Management-only bridge for the console forwarder. Docker does not publish
+  # host ports for containers that sit only on an internal network, so a
+  # dual-homed socat container is the one bridge between 127.0.0.1 and the lab.
+  mgmt:
+    driver: bridge
+
+volumes:
+  pihole-etc:
+
+services:
+  pihole-seed:
+    # On a fresh volume Pi-hole's start.sh runs gravity, which waits up to 120 s
+    # for DNS resolution and then fails because the lab has no egress. Seeding an
+    # empty gravity.db from the image's own schema template skips that step and
+    # keeps reset deterministic. Same pinned image, no network needed.
+    image: pihole/pihole:2026.09.0
+    network_mode: none
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        if [ ! -s /etc/pihole/gravity.db ]; then
+          pihole-FTL sqlite3 /etc/pihole/gravity.db < /etc/.pihole/advanced/Templates/gravity.db.sql
+          echo "seeded empty gravity.db from image template"
+        else
+          echo "gravity.db present; no seed"
+        fi
+    volumes:
+      - pihole-etc:/etc/pihole
+    restart: "no"
+
+  pihole:
+    depends_on:
+      pihole-seed:
+        condition: service_completed_successfully
+    # Appliance role: existing Pi-hole DNS base. pihole/pihole:2026.09.0,
+    # index digest sha256:5b9c8cf51de7d6d3f2240dbe72baf5f06e1fd39cb4d77a99fab4fa13e23bd1be,
+    # arm64 config digest sha256:8321c13b39f457d22bad78bbc537b94d17fbb3e0dcd8a13d2597b81cf1cc603f
+    image: pihole/pihole:2026.09.0
+    networks:
+      lab:
+        ipv4_address: 10.77.0.53
+    environment:
+      TZ: America/Los_Angeles
+      FTLCONF_webserver_api_password: ${PIHOLE_API_PASSWORD:?run lab/bin/lab init}
+      FTLCONF_dns_listeningMode: ALL
+      # Upstream points at the lab gateway, which runs no DNS listener: any name
+      # Pi-hole does not answer itself fails closed instead of leaving the lab.
+      FTLCONF_dns_upstreams: "10.77.0.80#53"
+      # Pi-hole is authoritative for the reserved lab names (RFC 6761 .test).
+      FTLCONF_dns_hosts: "10.77.0.80 benign.lab.test;10.77.0.80 flagged.lab.test;10.77.0.80 endpoint.lab.test"
+    volumes:
+      - pihole-etc:/etc/pihole
+    restart: "no"
+
+  console:
+    # Management jump: forwards 127.0.0.1:RG_PIHOLE_HOST_PORT -> pihole:80 and
+    # nothing else. It is the only dual-homed container; lab services have no
+    # route through it (no forwarding, no default route on the lab side).
+    # alpine/socat:1.8.1.3, arm64 config digest sha256:47c36671ee79a45ff6ec617c322bd081b9854790d1eef3c49070190f7119b0fe
+    image: alpine/socat:1.8.1.3
+    networks:
+      mgmt: {}
+      lab:
+        ipv4_address: 10.77.0.2
+    ports:
+      - "127.0.0.1:${RG_PIHOLE_HOST_PORT:-8053}:80"
+    command: ["TCP-LISTEN:80,fork,reuseaddr", "TCP:10.77.0.53:80"]
+    sysctls:
+      net.ipv4.ip_forward: 0
+    depends_on:
+      pihole:
+        condition: service_healthy
+    restart: "no"
+
+  gateway:
+    # Home gateway / lab-local test endpoint stand-in. busybox:1.37-musl,
+    # arm64 config digest sha256:c47382cc45d95424ac48d1bbad44a510a6fca13878bc8d7ab3a104716c9bb3ff
+    image: busybox:1.37-musl
+    networks:
+      lab:
+        ipv4_address: 10.77.0.80
+    volumes:
+      - ./gateway/www:/www:ro
+    command: ["httpd", "-f", "-p", "80", "-h", "/www"]
+    restart: "no"
+
+  client:
+    # Owned IoT/client role, explicitly configured to use the appliance resolver.
+    # alpine:3.22, arm64 config digest sha256:e09dd31eab4f4aeaade69891673134f31880ef51c6ee514b0cea072df06d7547
+    image: alpine:3.22
+    networks:
+      lab:
+        ipv4_address: 10.77.0.100
+    dns:
+      - 10.77.0.53
+    command: ["sleep", "infinity"]
+    restart: "no"
+
+  client2:
+    # Control client: same image, NOT in the dedicated Pi-hole group. Proves a
+    # group-scoped deny rule affects only the owned client.
+    image: alpine:3.22
+    networks:
+      lab:
+        ipv4_address: 10.77.0.101
+    dns:
+      - 10.77.0.53
+    command: ["sleep", "infinity"]
+    restart: "no"
+
+  clickhouse:
+    # Optional local sponsor target (cyber26-zaz). Not started unless
+    # `--profile sponsor` is given; image must be loaded host-side first.
+    # clickhouse/clickhouse-server:26.9-alpine, arm64 manifest
+    # sha256:c664ed7f7a12af1c1ec225c60162d1846ba719bde6403dc4c8d520e2dc3b6f18,
+    # config digest sha256:aef40e5d268445ea25bdf882012f991bbd73efc5388df3c9602efe8cc57a7fdc
+    image: clickhouse/clickhouse-server:26.9-alpine
+    profiles: ["sponsor"]
+    networks:
+      lab:
+        ipv4_address: 10.77.0.90
+    # No host port: reach it through a second console forwarder if a pod
+    # needs host access; keep it lab-internal by default.
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    ulimits:
+      nofile: 262144
+    restart: "no"

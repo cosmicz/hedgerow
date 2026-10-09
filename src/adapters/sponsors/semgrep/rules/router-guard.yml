@@ -1,0 +1,115 @@
+# Router Guard safety invariants, checked by Semgrep OSS on every candidate
+# revision. Each rule has a must-fire fixture and a clean fixture under
+# tests/sponsors/fixtures/semgrep/. Scope: TypeScript under src/.
+rules:
+  - id: rg-no-shell
+    message: >-
+      Shell execution is forbidden: actions go through typed executors with
+      fixed argv, never a shell or model-supplied command text.
+    severity: ERROR
+    languages: [typescript]
+    pattern-either:
+      - pattern: Bun.$`...`
+      - pattern: "$F(..., {..., shell: true, ...})"
+      # exec/execSync only when bound to child_process; other .exec() methods
+      # (e.g. the ClickHouse client) are not shells.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import { ..., exec, ... } from "$MOD";
+                  ...
+              - pattern-inside: |
+                  import { ..., execSync, ... } from "$MOD";
+                  ...
+              - pattern-inside: |
+                  import * as $CP from "$MOD";
+                  ...
+              - pattern-inside: |
+                  import $CP from "$MOD";
+                  ...
+          - metavariable-regex:
+              metavariable: $MOD
+              regex: ^(node:)?child_process$
+          - pattern-either:
+              - pattern: exec(...)
+              - pattern: execSync(...)
+              - pattern: $CP.exec(...)
+              - pattern: $CP.execSync(...)
+
+  - id: rg-process-spawn-outside-allowlist
+    message: >-
+      Process spawning is restricted to three reviewed fixed-argv files: the
+      Semgrep runner, the listener probe and the lab DNS verifier. Any other
+      module, including the rest of src/actions, must not start processes.
+    severity: ERROR
+    languages: [typescript]
+    paths:
+      exclude:
+        - "**/src/adapters/sponsors/semgrep/scan.ts"
+        - "**/src/adapters/sponsors/tools/listeners.ts"
+        - "**/src/actions/lab-verifier.ts"
+    pattern-either:
+      - pattern: Bun.spawn(...)
+      - pattern: Bun.spawnSync(...)
+      - pattern: import "child_process"
+      - pattern: import "node:child_process"
+      - pattern: import $X from "child_process"
+      - pattern: import $X from "node:child_process"
+      - pattern: import {...} from "child_process"
+      - pattern: import {...} from "node:child_process"
+
+  - id: rg-secret-in-url-or-log
+    message: >-
+      Session IDs, passwords and tokens must not appear in URLs or logs
+      (Pi-hole sessions are privileged credentials).
+    severity: ERROR
+    languages: [typescript]
+    pattern-either:
+      - pattern-regex: '[?&](sid|session|session_id|password|app_password|token)=\$\{'
+      - pattern-regex: 'console\.(log|info|warn|error|debug)\([^)]*\b(sid|password|app_password|session_id|token)\b'
+
+  - id: rg-tls-verification-disabled
+    message: TLS certificate verification must stay enabled for router and Pi-hole APIs.
+    severity: ERROR
+    languages: [typescript]
+    pattern-either:
+      - pattern-regex: 'rejectUnauthorized\s*:\s*false'
+      - pattern-regex: 'NODE_TLS_REJECT_UNAUTHORIZED'
+
+  - id: rg-model-imports-action
+    message: >-
+      Classifier/model code may return judgments only; it must not import
+      executor or action modules (models classify, deterministic policy authorizes).
+    severity: ERROR
+    languages: [typescript]
+    paths:
+      include:
+        - "**/classifier/**"
+        - "**/model/**"
+        - "**/explain/**"
+    pattern-regex: 'from\s+["''][^"'']*/(executor|actions?)(/[^"'']*)?["'']'
+
+  - id: rg-clickhouse-interpolated-sql
+    message: >-
+      ClickHouse SQL must use typed {name:Type} parameters; untrusted DNS/SSID
+      text must never be spliced into query text.
+    severity: ERROR
+    languages: [typescript]
+    paths:
+      include:
+        - "**/clickhouse/**"
+    pattern-regex: '`[^`]*\b(SELECT|INSERT|WHERE|FROM|ALTER|DROP|CREATE)\b[^`]*\$\{'
+
+  - id: rg-mongo-dynamic-query
+    message: >-
+      MongoDB filters must have fixed keys; computed keys or $where let
+      untrusted text become query operators.
+    severity: ERROR
+    languages: [typescript]
+    paths:
+      include:
+        - "**/mongodb/**"
+    pattern-either:
+      - pattern: |
+          {..., [$KEY]: $VALUE, ...}
+      - pattern-regex: '\$where'

@@ -13,11 +13,11 @@ test.skipIf(process.env.RG_AGENT_LIVE!=="1")("hosted Clef -> OpenAI approved too
   const password=readFileSync(join(lab,".env"),"utf8").match(/^PIHOLE_API_PASSWORD=(.+)$/m)?.[1]?.replace(/^['"]|['"]$/g,"");
   if(!password)throw new Error("Lab credential unavailable");
   const group=Number(process.env.RG_LAB_GROUP);if(!Number.isSafeInteger(group)||group<1)throw new Error("Dedicated group required");
-  const adapter=new PiholeAdapter({base_url:"http://127.0.0.1:8053/api",password:()=>password,domain:"flagged.lab.test",group_id:group});
+  const adapter=new PiholeAdapter({base_url:"http://127.0.0.1:8053/api",password:()=>password,domain:"update-check.cloudsyncapi.net",group_id:group});
   const dir=mkdtempSync(join(tmpdir(),"rg-agent-live-"));const ledger=new SqliteLedger(join(dir,"actions.sqlite"));
   const verify=createLabVerifier(lab);let digest:string|null=null;
   const now=Date.now();let revision="a".repeat(64);
-  const p:Proposal={action:"dns-deny",network_scope:"lab:rg-lab",resolver_id:"pihole-lab",domain:"flagged.lab.test",group_id:group,
+  const p:Proposal={action:"dns-deny",network_scope:"lab:rg-lab",resolver_id:"pihole-lab",domain:"update-check.cloudsyncapi.net",group_id:group,
     evidence_revision:revision,created_at:now,expires_at:now+120_000};
   const service=new ActionService({ledger,adapter,verify,now:Date.now,evidence_revision:()=>revision,
     policy:{network_scope:p.network_scope,resolver_id:p.resolver_id,group_id:group,allowed_domains:[p.domain],max_duration_ms:120_000}});

@@ -13,7 +13,7 @@ const LAB_CLIENT = "10.77.0.100";
 function row(over: Partial<CapturedQuery> & { id: string; observed_at: number }): CapturedQuery {
   return {
     captured_at: over.observed_at,
-    domain: "flagged.lab.test",
+    domain: "update-check.cloudsyncapi.net",
     client: LAB_CLIENT,
     type: "A",
     status: "DENYLIST",
@@ -54,7 +54,7 @@ describe("log classifier", () => {
     await lc.ingest([
       row({ id: "pihole:query:1", observed_at: now - 2_000 }),
       row({ id: "pihole:query:2", observed_at: now - 1_000 }),
-      row({ id: "b1", observed_at: now - 1_500, domain: "benign.lab.test", status: "FORWARDED", indicator: false }),
+      row({ id: "b1", observed_at: now - 1_500, domain: "wikipedia.org", status: "FORWARDED", indicator: false }),
     ]);
     const snap = lc.snapshot();
 
@@ -69,7 +69,7 @@ describe("log classifier", () => {
     // Closed projection: flagged + benign context lines, each only whitelisted fields.
     const sent = calls[0]!.body;
     expect(sent.model).toBe("cloudflare/clef");
-    expect(sent.state.lab_queries.map((q: any) => q.domain).sort()).toEqual(["benign.lab.test", "flagged.lab.test", "flagged.lab.test"]);
+    expect(sent.state.lab_queries.map((q: any) => q.domain).sort()).toEqual(["update-check.cloudsyncapi.net", "update-check.cloudsyncapi.net", "wikipedia.org"]);
     for (const q of sent.state.lab_queries) {
       expect(Object.keys(q).sort()).toEqual(["client", "domain", "id", "reply", "status", "time", "type"]);
       expect(q.client).toBe(LAB_CLIENT);
@@ -127,7 +127,7 @@ describe("log classifier", () => {
     const { calls, fetcher } = stubProvider("benign");
     const lc = new LogClassifier(opts(fetcher, () => now));
 
-    await lc.ingest([row({ id: "b1", observed_at: now, domain: "benign.lab.test", indicator: false })]);
+    await lc.ingest([row({ id: "b1", observed_at: now, domain: "wikipedia.org", indicator: false })]);
 
     expect(calls).toHaveLength(0);
     expect(lc.snapshot()).toMatchObject({ status: "idle", incidents: [] });

@@ -55,9 +55,9 @@ listed tag: ~crane pull --platform linux/arm64 TAG private/image.tar~, then
 ~docker load -i private/image.tar~ and repeat the image gate. This is an
 alternative acquisition path, not permission to change the pinned identities.
 
-* Reserved names
-RFC 6761 ~.test~ names that resolve only inside the lab: ~wikipedia.org~,
-~update-check.cloudsyncapi.net~, ~endpoint.lab.test~ (all 10.77.0.80). Negative controls:
+* Local DNS names
+Lab-local answers override ~wikipedia.org~, ~update-check.cloudsyncapi.net~,
+and the reserved name ~endpoint.lab.test~ (all 10.77.0.80). Negative controls:
 ~never.invalid~ and ~example.com~ must never resolve. "Flagged" is a synthetic
 label for the demo scenario, not live malicious infrastructure.
 

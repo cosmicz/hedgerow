@@ -33,13 +33,13 @@ test("unchanged histories are not mirrored again; a new approval is mirrored", a
   const sponsors = new DemoSponsors(bridge);
   const now = Date.now();
   const service = new ActionService({ ledger, now: () => now, evidence_revision: () => "rev",
-    policy: { network_scope: "lab:rg-lab", resolver_id: "pihole-lab", group_id: 1, allowed_domains: ["flagged.lab.test"], max_duration_ms: 120000 },
+    policy: { network_scope: "lab:rg-lab", resolver_id: "pihole-lab", group_id: 1, allowed_domains: ["update-check.cloudsyncapi.net"], max_duration_ms: 120000 },
     adapter: { read: async () => null, create: async () => {}, remove: async () => {} },
     verify: async () => ({ target: "resolved", benign: "resolved", checked_at: now, mode: "synthetic" }),
   });
   try {
     const record = service.propose({ action: "dns-deny", network_scope: "lab:rg-lab", resolver_id: "pihole-lab", group_id: 1,
-      domain: "flagged.lab.test", evidence_revision: "rev", created_at: now, expires_at: now + 120000 });
+      domain: "update-check.cloudsyncapi.net", evidence_revision: "rev", created_at: now, expires_at: now + 120000 });
     await sponsors.refresh(ledger, null); expect(writes).toBe(1);
     await sponsors.refresh(ledger, null); expect(writes).toBe(1);
     service.approve(record.digest, "test");

@@ -39,6 +39,9 @@ function markdown(text){
 function button(label,command,digest){const n=node("button",label,"secondary");n.disabled=actionBusy;n.addEventListener("click",()=>run(command,{digest}));return n;}
 function renderRouter(r){
   const section=byId("router");section.replaceChildren();
+  const secured=r?.phase==="rotated"&&r?.trace?.attempts?.some(a=>a.attempt==="old-credential-after-rotation"&&a.outcome==="rejected")&&r?.trace?.attempts?.some(a=>a.attempt==="replacement-credential-after-rotation"&&a.outcome==="accepted");
+  const status=secured?"✓ Password secured":({down:"Not started",prepared:"Ready",attacked:"Default password detected",proposed:"Change ready",approved:"Approved",executing:"Updating…",failed:"Needs attention"}[r?.phase]??"Not connected");
+  byId("router-title").textContent=`Router security / setup · ${status}`;
   if(!r){section.append(node("p","Router integration is not connected."));return;}
   section.append(node("p",`Status: ${r.phase}.`,"note"));
   const controls=node("div",undefined,"controls");
@@ -89,6 +92,7 @@ function render(s){
     if(["active","ambiguous","rollback-unverified"].includes(action.status))approval.append(button("Undo block","undo",action.digest));
     if(action.verification){const v=action.verification;verification.className="measured";verification.append(node("h3","Verification"),node("p",`update-check.cloudsyncapi.net: ${v.target}. wikipedia.org: ${v.benign}.`),node("p",`Checked ${when(v.checked_at)}.`));}
   }
+  byId("execution-details").hidden=!s.agent;
   if(s.agent){interpretation.append(node("h3","Agent response"),node("p",`OpenAI · ${when(s.agent_at)} · ${s.agent.status} · ${s.agent.calls.length} tool calls`));
     if(s.agent.explanation){interpretation.append(markdown(s.agent.explanation.text),node("p",`Cited traces: ${s.agent.explanation.citations.join(", ")}`,"digest"));}
     else interpretation.append(node("p","The agent could not finish its explanation. See verification above.","caution"));

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { collectQueryEvidence, pollQueryEvidence } from "../../src/demo/evidence";
 const now = 1_800_000_000_000;
-const row = { id: 1, time: now / 1000 - 1, domain: "flagged.lab.test", type: "A", status: "CACHE", client: { ip: "10.77.0.100", name: "hostile instructions" }, reply: { type: "IP" } };
+const row = { id: 1, time: now / 1000 - 1, domain: "update-check.cloudsyncapi.net", type: "A", status: "CACHE", client: { ip: "10.77.0.100", name: "hostile instructions" }, reply: { type: "IP" } };
 test("current owned query produces real qce finding; unrelated, stale and future rows cannot", () => {
   const result = collectQueryEvidence({ queries: [row] }, now - 2000, now);
   expect(result.observations).toHaveLength(2);

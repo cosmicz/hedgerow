@@ -38,11 +38,11 @@ function setup() {
     mode: "synthetic",
   });
   const policy = { network_scope: "lab:rg-lab", resolver_id: "pihole-lab", group_id: 1,
-    allowed_domains: ["flagged.lab.test"], max_duration_ms: 60_000 };
+    allowed_domains: ["update-check.cloudsyncapi.net"], max_duration_ms: 60_000 };
   const options = { ledger, adapter, verify, policy, now: () => now, evidence_revision: () => revision };
   const service = new ActionService(options);
   const proposal: Proposal = { action: "dns-deny", network_scope: policy.network_scope,
-    resolver_id: policy.resolver_id, domain: "flagged.lab.test", group_id: 1,
+    resolver_id: policy.resolver_id, domain: "update-check.cloudsyncapi.net", group_id: 1,
     evidence_revision: revision, expires_at: now + 30_000, created_at: now };
   return { service, proposal, adapter, ledger, db, options,
     tick: (n: number) => { now += n; }, stale: () => { revision = "evidence-2"; },
@@ -87,7 +87,7 @@ describe("approved DNS action lifecycle", () => {
     expect(applied.status).toBe("active");
     expect(applied.verification?.target).toBe("blocked");
     expect(applied.verification?.benign).toBe("resolved");
-    expect(s.adapter.rule?.domain).toBe("flagged.lab.test");
+    expect(s.adapter.rule?.domain).toBe("update-check.cloudsyncapi.net");
     expect((await s.service.undo(p.digest)).status).toBe("reverted");
     expect(s.adapter.rule).toBeNull();
     expect(s.adapter.deletes).toBe(1);
@@ -97,7 +97,7 @@ describe("approved DNS action lifecycle", () => {
     await expect(s.service.execute(p.digest)).rejects.toThrow();
     s.service.approve(p.digest, "operator"); s.service.revoke(p.digest);
     await expect(s.service.execute(p.digest)).rejects.toThrow();
-    expect(() => s.service.propose({ ...s.proposal, domain: "benign.lab.test" })).toThrow();
+    expect(() => s.service.propose({ ...s.proposal, domain: "wikipedia.org" })).toThrow();
     expect(() => s.service.propose({ ...s.proposal, network_scope: "production" })).toThrow();
     expect(() => s.service.propose({ ...s.proposal, group_id: 0 })).toThrow();
     const fresh = s.service.propose({ ...s.proposal, expires_at: s.proposal.expires_at + 1 });

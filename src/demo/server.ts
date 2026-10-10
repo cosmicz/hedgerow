@@ -76,7 +76,14 @@ for (const [route, file, type] of [["/", "index.html", "text/html; charset=utf-8
 // A Pi reverse-forward may use a different Mac loopback port; the exact origin remains enforced.
 const origin = process.env.RG_UI_ORIGIN ?? "http://127.0.0.1:8787";
 const handler = createDemoHandler({ origin, token: randomBytes(32).toString("hex"), assets,
-  state: () => controller.state(), command: (name, input) => controller.command(name, input) });
+  state: () => controller.state(), command: async (name, input) => {
+    const result = await controller.command(name, input);
+    if (name === "reset") {
+      for (const model of logModels) model.reset();
+      return controller.state();
+    }
+    return result;
+  } });
 const server = Bun.serve({ hostname: "127.0.0.1", port: 8787, idleTimeout: 120, maxRequestBodySize: 4096, fetch: handler });
 const timer = setInterval(() => { void controller.reconcile().catch(() => {}); }, 1000);
 let collecting=false;

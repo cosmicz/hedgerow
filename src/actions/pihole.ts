@@ -17,7 +17,7 @@ export class PiholeAdapter implements DnsAdapter {
     if (!['127.0.0.1', '[::1]'].includes(url.hostname) || !['http:', 'https:'].includes(url.protocol) ||
       url.pathname.replace(/\/$/, '') !== '/api' || url.username || url.password || url.search || url.hash ||
       !Number.isSafeInteger(options.group_id) || options.group_id < 1 ||
-      !/^(?:[a-z0-9-]+\.)+[a-z]{2,}$/.test(options.domain)) throw new Error("Explicit loopback lab API and dedicated group required");
+      (options.domain !== "update-check.cloudsyncapi.net" && !/^(?:[a-z0-9-]+\.)+test$/.test(options.domain))) throw new Error("Explicit loopback lab API and dedicated group required");
     this.#base = url.href.replace(/\/$/, '');
     this.#fetch = options.fetcher ?? fetch;
   }

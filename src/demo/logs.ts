@@ -49,7 +49,7 @@ export class CapturedLogs {
   snapshot(){
     const parse=(row:any)=>JSON.parse(row.body);
     return {status:this.status==="live"&&this.checkedAt!==null&&this.now()-this.checkedAt>10_000?"stale":this.status,checked_at:this.checkedAt,scope:"Owned client 10.77.0.100; operator-selected DNS domains; VM-live",
-      rows:this.db.query("SELECT body FROM captured_queries ORDER BY at DESC LIMIT 80").all().map(parse) as CapturedQuery[],
+      rows:this.db.query("SELECT body FROM captured_queries ORDER BY at DESC LIMIT 80").all().map(parse).filter(row=>CAPTURE_DOMAINS.includes(row.domain)) as CapturedQuery[],
       events:this.db.query("SELECT body FROM activity ORDER BY seq DESC LIMIT 80").all().map(parse) as {at:number;kind:string;summary:string;evidence_refs:string[]}[]};
   }
   close(){this.db.close();}

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { CapturedLogs, projectQueryLogs } from "../../src/demo/logs";
 import traffic from "../../lab/traffic-domains.json";
 const now = 1_800_000_000_000;
-const row = { id: 7, time: now / 1000, domain: "flagged.lab.test", type: "A", status: "CACHE", client: { ip: "10.77.0.100", name: "private hostname" }, reply: { type: "IP" } };
+const row = { id: 7, time: now / 1000, domain: "update-check.cloudsyncapi.net", type: "A", status: "CACHE", client: { ip: "10.77.0.100", name: "private hostname" }, reply: { type: "IP" } };
 test("captures operator-selected web domains without admitting arbitrary traffic", () => {
   const domains=traffic.domains;
   expect(new Set(domains).size).toBe(50);
@@ -12,7 +12,7 @@ test("captures operator-selected web domains without admitting arbitrary traffic
   expect(rows.every(r=>!r.indicator)).toBe(true);
 });
 test("captured rows retain source IDs and times, exclude unrelated traffic and arbitrary text", () => {
-  const rows = projectQueryLogs({ queries: [row, {...row,id:8,domain:"benign.lab.test"}, {...row,id:9,domain:"private.example"}, {...row,id:10,client:{ip:"10.77.0.101"}}] }, now);
+  const rows = projectQueryLogs({ queries: [row, {...row,id:8,domain:"wikipedia.org"}, {...row,id:9,domain:"private.example"}, {...row,id:10,client:{ip:"10.77.0.101"}}] }, now);
   expect(rows).toHaveLength(2);
   expect(rows[0]?.id).toBe("pihole:query:7");
   expect(rows[0]?.observed_at).toBe(now);

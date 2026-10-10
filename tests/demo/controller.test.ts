@@ -51,7 +51,7 @@ test.each(["none", "unavailable", "failed", "hung"] as const)("controller keeps 
     verify: async () => ({ target: rule ? "blocked" : "resolved", benign: "resolved", checked_at: now, mode: "synthetic" }),
     collect: async from => {
       expect(from).toBe(now);
-      return collectQueryEvidence({ queries: [{ id: 1, time: now / 1000, domain: "flagged.lab.test", type: "A", client: { ip: "10.77.0.100" } }] }, from, now);
+      return collectQueryEvidence({ queries: [{ id: 1, time: now / 1000, domain: "update-check.cloudsyncapi.net", type: "A", client: { ip: "10.77.0.100" } }] }, from, now);
     },
     classifiers: [],
     agent: { model: "test", provenance: "fake", respond: async input => {

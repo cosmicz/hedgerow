@@ -3,6 +3,7 @@
 <body>
 <header><a class="brand" href="/" aria-label="Hedgerow home"><span class="hedge" aria-hidden="true">⌂</span> Hedgerow</a><span class="mode">Live demo</span></header>
 <main>
+  <details class="router-panel"><summary id="router-title">Router security / setup</summary><div id="router"></div></details>
   <div class="incident-workspace">
     <section id="live-logs" aria-labelledby="logs-title">
       <h1 id="logs-title">Live device logs</h1>
@@ -18,14 +19,13 @@
       <div id="chat-messages" role="log" aria-live="polite"></div>
       <section id="approval" aria-label="Proposed response"></section>
       <section id="verification" aria-label="Verification"></section>
-      <details><summary>Execution details</summary><section id="interpretation" aria-label="Agent response"></section></details>
+      <details id="execution-details" hidden><summary>Execution details</summary><section id="interpretation" aria-label="Agent response"></section></details>
       <form id="chat-form"><label for="chat-input" class="sr-only">Message Hedgerow</label><textarea id="chat-input" maxlength="1000" rows="2" placeholder="What happened? What should I do?"></textarea><button type="submit">Send</button></form>
       <button class="secondary" data-command="propose">Review response</button>
       <details id="response-history"><summary>Agent activity</summary><ol id="activity-rows"></ol></details>
       <details><summary>Evidence timeline</summary><ol id="timeline"></ol></details>
     </section>
   </div>
-  <details class="router-panel"><summary id="router-title">Router security</summary><div id="router"></div></details>
   <section id="guidance" aria-label="Reference guidance"></section>
   <details><summary id="sponsors-title">Connected services</summary><div id="sponsors"></div></details>
   <details><summary>Technical details</summary><pre id="raw"></pre></details>

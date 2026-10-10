@@ -15,19 +15,19 @@ test.skipIf(process.env.RG_LIVE_TEST !== "1")("live lab: approve -> deny -> inde
   const password = env.match(/^PIHOLE_API_PASSWORD=(.+)$/m)?.[1]?.replace(/^['"]|['"]$/g, "");
   if (!password) throw new Error("Lab credential is not configured");
   const adapter = new PiholeAdapter({ base_url: "http://127.0.0.1:8053/api", password: () => password,
-    domain: "flagged.lab.test", group_id: group });
+    domain: "update-check.cloudsyncapi.net", group_id: group });
   const dir = mkdtempSync(join(tmpdir(), "rg-live-action-"));
   const ledger = new SqliteLedger(join(dir, "actions.sqlite"));
   const service = new ActionService({ ledger, adapter, verify: createLabVerifier(lab), now: Date.now,
     evidence_revision: () => "integration-owned-synthetic-domain-v1",
     policy: {network_scope: "lab:rg-lab", resolver_id: "pihole-lab", group_id: group,
-      allowed_domains: ["flagged.lab.test"], max_duration_ms: 120_000} });
+      allowed_domains: ["update-check.cloudsyncapi.net"], max_duration_ms: 120_000} });
   let digest: string | null = null;
   try {
-    expect(await adapter.read("flagged.lab.test")).toBeNull();
+    expect(await adapter.read("update-check.cloudsyncapi.net")).toBeNull();
     const now = Date.now();
     const record = service.propose({action: "dns-deny", network_scope: "lab:rg-lab", resolver_id: "pihole-lab",
-      group_id: group, domain: "flagged.lab.test", evidence_revision: "integration-owned-synthetic-domain-v1",
+      group_id: group, domain: "update-check.cloudsyncapi.net", evidence_revision: "integration-owned-synthetic-domain-v1",
       created_at: now, expires_at: now + 60_000 });
     digest = record.digest;
     service.approve(digest, "operator-authorized-lab-test");
@@ -37,7 +37,7 @@ test.skipIf(process.env.RG_LIVE_TEST !== "1")("live lab: approve -> deny -> inde
     expect(applied.verification?.benign).toBe("resolved");
     const reverted = await service.undo(digest);
     expect(reverted.status).toBe("reverted");
-    expect(await adapter.read("flagged.lab.test")).toBeNull();
+    expect(await adapter.read("update-check.cloudsyncapi.net")).toBeNull();
     console.log(JSON.stringify({ mode: "vm-live", topology: "isolated containers inside Docker Desktop VM",
       action: "dns-deny", applied: applied.status, verification: applied.verification,
       undo: reverted.status, restored: reverted.verification }));

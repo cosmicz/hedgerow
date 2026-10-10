@@ -141,6 +141,8 @@ export class LogClassifier {
   readonly #incidents: Incident[] = [];
   readonly #openBySource = new Map<string, Incident>();
   readonly #seen = new Set<string>();
+  #generation = 0;
+  #resetAt = 0;
   #lastInference: "none" | "succeeded" | "failed" = "none";
 
   constructor(options: LogClassifierOptions = {}) {
@@ -151,8 +153,17 @@ export class LogClassifier {
     this.#timeoutMs = options.timeoutMs ?? 5_000;
   }
 
+  reset(): void {
+    this.#generation++;
+    this.#resetAt = this.#now();
+    this.#incidents.length = 0;
+    this.#openBySource.clear();
+    this.#lastInference = "none";
+  }
+
   /** Groups fresh new flagged rows into incidents and labels each new incident once. */
   async ingest(rows: readonly CapturedQuery[]): Promise<void> {
+    const generation = this.#generation;
     const now = this.#now();
     const inWindow = (row: CapturedQuery) => row.observed_at <= now && row.observed_at >= now - INCIDENT_WINDOW_MS;
     const benignHealthy = rows.some((row) => row.domain === BENIGN && row.client === LAB_CLIENT && row.reply === "IP");
@@ -170,7 +181,7 @@ export class LogClassifier {
     const fresh: ClosedLogRow[] = [];
     for (const row of rows) {
       if (row.domain !== FLAGGED || row.client !== LAB_CLIENT || !row.indicator) continue;
-      if (!inWindow(row)) continue;
+      if (!inWindow(row) || row.observed_at <= this.#resetAt) continue;
       if (this.#seen.has(row.id)) continue;
       let projected: ClosedLogRow;
       try {
@@ -206,6 +217,7 @@ export class LogClassifier {
       started_at: now,
     };
     const judgment = await this.#classify(fresh, benignContext, benignHealthy);
+    if (generation !== this.#generation) return;
     incident.judgments.push(judgment);
     incident.category = judgment.category;
     incident.status = judgment.inference_status === "succeeded" ? "classified" : "degraded";

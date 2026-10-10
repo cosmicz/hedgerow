@@ -4,7 +4,7 @@ import { runInNewContext } from "node:vm";
 test("live table renders readable records without the removed diagnostic section", async () => {
   const html=await Bun.file(new URL("../../src/demo/public/index.html",import.meta.url)).text();
   class Element {
-    children: Element[]=[]; textContent=""; dataset:Record<string,string>={};
+    children: Element[]=[]; textContent=""; dataset:Record<string,string>={}; hidden=false;
     append(...children:Element[]){this.children.push(...children);}
     replaceChildren(){this.children=[];}
     querySelectorAll(){return [];}
@@ -20,6 +20,7 @@ test("live table renders readable records without the removed diagnostic section
   expect(cells.map(c=>c.textContent).slice(1)).toEqual(["10.77.0.100","google.com","Resolved (cached)"]);
   expect(cells.every(c=>c.children.length===0)).toBe(true);
   expect(elements.get("log-status")!.textContent).toBe("Live");
+  expect(elements.get("execution-details")!.hidden).toBe(true);
   expect(html).not.toContain("Log details");
   expect(html).not.toContain("Probe evidence remains");
   expect(html).toContain("Technical details");
@@ -29,4 +30,7 @@ test("live table renders readable records without the removed diagnostic section
   selection="";
   runInNewContext("render({logs:{status:'live',rows:[],events:[]},actions:[],judgments:[],traces:[]})",context);
   expect(elements.get("captured-rows")!.children[0]!.children[0]!.textContent).toBe("Waiting for device logs…");
+  runInNewContext("render({logs:{status:'live',rows:[],events:[]},actions:[],judgments:[],traces:[],agent:{status:'complete',calls:[],explanation:{text:'**Blocked** the domain.',citations:[]}}})",context);
+  expect(elements.get("execution-details")!.hidden).toBe(false);
+  expect(elements.get("interpretation")!.children.length).toBeGreaterThan(0);
 });

@@ -74,7 +74,7 @@ function evaluateObservation(observation: Observation, expectedCollectors: reado
   if (observation.kind === "collector_status" && observation.payload.available === false) {
     return [finding("collector-unavailable", "unknown", observation, "collector reported unavailable")];
   }
-  if (observation.kind === "dns_query" && normalizeDomain(observation.payload.domain) === "flagged.lab.test") {
+  if (observation.kind === "dns_query" && normalizeDomain(observation.payload.domain) === "update-check.cloudsyncapi.net") {
     return [finding("flagged-test-domain", "observed", observation, "exact flagged lab domain observed")];
   }
   if (observation.kind === "service_status" && observation.payload.available === false) {

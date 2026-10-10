@@ -1,0 +1,17 @@
+#!/bin/sh
+# Generate real DNS lookups from the owned client using the shared top-50 list.
+# Usage: lab/bin/traffic [maximum-interval-seconds]; Ctrl-C stops it.
+set -eu
+LAB_DIR=$(cd "$(dirname "$0")/.." && pwd)
+MAX=${1:-6}
+case "$MAX" in ''|*[!0-9]*) echo 'Interval must be 2..60 seconds' >&2; exit 2 ;; esac
+[ "$MAX" -ge 2 ] && [ "$MAX" -le 60 ] || { echo 'Interval must be 2..60 seconds' >&2; exit 2; }
+NAMES=$(jq -er '.domains[]' "$LAB_DIR/traffic-domains.json")
+i=0
+while :; do
+  name=$(printf '%s\n' "$NAMES" | awk -v seed="$(date +%s)$i" 'BEGIN{srand(seed)} {a[NR]=$0} END{print a[int(rand()*NR)+1]}')
+  address=$(sh "$LAB_DIR/test/dnsq.sh" "$name" 10.77.0.53 client)
+  printf '%s %-24s %s\n' "$(date +%H:%M:%S)" "$name" "${address:-no-answer}"
+  i=$((i+1))
+  sleep $(( (i * 7 % (MAX - 1)) + 2 ))
+done

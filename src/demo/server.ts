@@ -53,7 +53,7 @@ const sponsorBridge = await SponsorBridge.open({
 if (process.env.RG_SEMGREP_SCAN === "1") {
   await sponsorBridge.recordSecurityScan(await runSemgrep({ cwd: process.cwd(), targets: ["src"] }));
 }
-const adapter = new PiholeAdapter({ base_url: "http://127.0.0.1:8053/api", password: () => password, domain: "flagged.lab.test", group_id: group });
+const adapter = new PiholeAdapter({ base_url: "http://127.0.0.1:8053/api", password: () => password, domain: "update-check.cloudsyncapi.net", group_id: group });
 const guidance = new DemoGuidance(SensoGuidance.fromEnv());
 guidance.start();
 const router = process.env.RG_ROUTER_LAB === "1" ? new DemoRouter({

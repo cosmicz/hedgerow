@@ -5,7 +5,7 @@
 # lab at baseline. Not the application's tests.
 . "$(dirname "$0")/lib.sh"
 load_env
-D=flagged.lab.test
+D=update-check.cloudsyncapi.net
 q() { sh "$LAB_DIR/test/dnsq.sh" "$1" 10.77.0.53; }
 q2() { sh "$LAB_DIR/test/dnsq.sh" "$1" 10.77.0.53 client2; }
 
@@ -21,7 +21,7 @@ assert_eq "$D" "$(printf '%s' "$resp" | jq -r '.processed.success[0].item // emp
 i=0; after=""
 while [ $i -lt 10 ]; do after=$(q "$D"); [ "$after" = "0.0.0.0" ] && break; i=$((i+1)); sleep 1; done
 assert_eq 0.0.0.0 "$after" "after add: $D answers 0.0.0.0 for owned client (group $gid)"
-assert_eq 10.77.0.80 "$(q benign.lab.test)" "after add: benign.lab.test unaffected"
+assert_eq 10.77.0.80 "$(q wikipedia.org)" "after add: wikipedia.org unaffected"
 assert_eq 10.77.0.80 "$(q2 "$D")" "after add: control client2 still resolves $D (scope holds)"
 del=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' -X DELETE "$RG_PIHOLE_API_BASE/domains/deny/exact/$D" -H "X-FTL-SID: $SID")
 assert_eq 204 "$del" "api: deny/exact deleted (204)"

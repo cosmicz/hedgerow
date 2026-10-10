@@ -109,7 +109,7 @@ cmd_env() {
   printf 'export RG_PIHOLE_GROUP=%s\nexport RG_PIHOLE_GROUP_ID=%s\n' "$LAB_GROUP" "${gid:-UNPROVISIONED}"
   printf 'export RG_LAB_CLIENT=%s\nexport RG_LAB_CONTROL_CLIENT=%s\n' "$LAB_CLIENT" "$LAB_CONTROL_CLIENT"
   printf 'export RG_LAB_SCOPE=lab:rg-lab\n'
-  printf 'export RG_LAB_FLAGGED=flagged.lab.test\nexport RG_LAB_BENIGN=benign.lab.test\n'
+  printf 'export RG_LAB_FLAGGED=update-check.cloudsyncapi.net\nexport RG_LAB_BENIGN=wikipedia.org\n'
 }
 
 cmd_baseline() {

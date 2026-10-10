@@ -4,7 +4,7 @@ import type { Proposal, Verification } from "./types";
 /** Independent lookup from the owned client, through the lab resolver. */
 export function createLabVerifier(labDirectory: string) {
   const resolve = async (domain: string): Promise<string> => {
-    if (!["flagged.lab.test", "benign.lab.test"].includes(domain)) throw new Error("Unknown lab target");
+    if (!["update-check.cloudsyncapi.net", "wikipedia.org"].includes(domain)) throw new Error("Unknown lab target");
     const child = Bun.spawn(["sh", join(labDirectory, "test/dnsq.sh"), domain, "10.77.0.53"], {
       stdout: "pipe", stderr: "ignore",
     });
@@ -15,10 +15,10 @@ export function createLabVerifier(labDirectory: string) {
     } finally { clearTimeout(timeout); }
   };
   return async (proposal: Proposal, expected: "blocked" | "resolved"): Promise<Verification> => {
-    if (proposal.network_scope !== "lab:rg-lab" || proposal.domain !== "flagged.lab.test") throw new Error("Probe outside lab scope");
+    if (proposal.network_scope !== "lab:rg-lab" || proposal.domain !== "update-check.cloudsyncapi.net") throw new Error("Probe outside lab scope");
     let result: Verification;
     for (let attempt = 0; ; attempt++) {
-      const [target, benign] = await Promise.all([resolve(proposal.domain), resolve("benign.lab.test")]);
+      const [target, benign] = await Promise.all([resolve(proposal.domain), resolve("wikipedia.org")]);
       result = { target: target === "0.0.0.0" ? "blocked" : target === "10.77.0.80" ? "resolved" : "failed",
         benign: benign === "10.77.0.80" ? "resolved" : "failed", checked_at: Date.now(), mode: "vm-live" };
       if (result.target === expected && result.benign === "resolved" || attempt >= 9) return result;

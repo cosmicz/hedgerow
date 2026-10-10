@@ -6,12 +6,10 @@
   <div class="incident-workspace">
     <section id="live-logs" aria-labelledby="logs-title">
       <h1 id="logs-title">Live device logs</h1>
-      <p id="log-status" role="status">Connecting to Pi-hole…</p>
+      <p id="log-status" role="status">Connecting…</p>
       <div id="incident-groups" aria-label="Detected incidents"></div>
-      <div class="log-scroll"><table class="log-table"><thead><tr><th>Time</th><th>Query / client</th><th>Result</th><th>Incident</th></tr></thead><tbody id="captured-rows"></tbody></table></div>
-      <p id="log-link" class="digest"></p>
+      <div class="log-scroll"><table class="log-table"><thead><tr><th>Time</th><th>Device</th><th>Domain</th><th>Result</th></tr></thead><tbody id="captured-rows"></tbody></table></div>
       <div class="controls"><button data-command="observe">Generate test traffic</button><button class="secondary" data-command="classify">Analyze now</button></div>
-      <details><summary>Log details</summary><p>Source: Pi-hole query API, updated every two seconds. This demo uses one client and two test domains. Rows include test traffic and verification lookups.</p><p id="coverage"></p><p id="topology"></p></details>
     </section>
     <section class="agent-chat" aria-labelledby="incident-title">
       <h2 id="incident-title">Hedgerow agent</h2>
@@ -32,5 +30,4 @@
   <details><summary id="sponsors-title">Connected services</summary><div id="sponsors"></div></details>
   <details><summary>Technical details</summary><pre id="raw"></pre></details>
   <button class="secondary" data-command="reset">Reset demo view</button>
-  <footer><details><summary>About this demo</summary><p>Isolated lab, recorded measurements, scoped changes with approval. The Pi can host the controller; this view identifies its current deployment under Log details. DNS filtering does not end existing connections. Consumer-router compatibility and Wi-Fi protection have not been tested. Model responses are interpretations; verification shows what changed.</p></details></footer>
 </main></body></html>

@@ -61,10 +61,17 @@ automatically assessed by both Jev and Clef and grouped into incidents. Ask the
 agent about the evidence, review a response, approve the block, apply it, inspect
 target/benign verification, then undo. Chat is explanatory; the action controls
 retain exact approval. Each model sees only closed lab log fields, not arbitrary
-household traffic; related rows are grouped without repeated calls for 60 seconds.
+household traffic; the top 50 domains in [[file:lab/traffic-domains.json][the shared traffic catalog]]
+are also captured as background context. The catalog records its Tranco source
+and date; the generator and capture use the same list. Related rows are grouped without
+repeated calls for 60 seconds.
 The model cannot approve anything. Missing inference stays unavailable;
 it does not silently become a hosted result. Evidence expires after 60 seconds;
 start a new observation if an unexecuted proposal becomes stale.
+
+For a continuous background log stream, run ~lab/bin/traffic~ in another
+terminal. It queries the shared top-50 catalog from the owned client every
+2–6 seconds; Ctrl-C stops it. The lab resolver answers these names locally.
 
 ~private/demo/actions.sqlite~ retains authority and measured history. Only one
 server may use it: ~private/demo/server.lock~ fails closed on a second start.

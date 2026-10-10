@@ -6,7 +6,8 @@
 import { join } from "node:path";
 const LAB_DIR = join(import.meta.dir, "..");
 const RESOLVER = "10.77.0.53";
-const NAMES = new Set(["flagged.lab.test", "benign.lab.test", "endpoint.lab.test", "never.invalid", "example.com"]);
+const background: string[] = JSON.parse(await Bun.file(join(LAB_DIR, "traffic-domains.json")).text()).domains;
+const NAMES = new Set(["update-check.cloudsyncapi.net", "wikipedia.org", "endpoint.lab.test", "never.invalid", "example.com", ...background]);
 const CLIENTS = new Set(["client", "client2"]);
 const PORT = Number(process.env.RG_PROBE_PORT ?? 8777);
 

@@ -1,4 +1,7 @@
 import { Database } from "bun:sqlite";
+import traffic from "../../lab/traffic-domains.json";
+
+export const CAPTURE_DOMAINS = Object.freeze(["update-check.cloudsyncapi.net", "wikipedia.org", ...traffic.domains]);
 
 export interface CapturedQuery {
   id: string; observed_at: number; captured_at: number; domain: string;
@@ -11,10 +14,10 @@ export function projectQueryLogs(data: unknown, now: number): CapturedQuery[] {
   return rows.flatMap(row=>{
     if(!row||!Number.isSafeInteger(row.id)||row.id<0||!Number.isFinite(row.time))throw Error("Invalid query log");
     const at=Math.round(row.time*1000);
-    if(row.client?.ip!=="10.77.0.100"||!["flagged.lab.test","benign.lab.test"].includes(row.domain)||row.type!=="A"||at>now||at<now-60_000)return [];
+    if(row.client?.ip!=="10.77.0.100"||!CAPTURE_DOMAINS.includes(row.domain)||row.type!=="A"||at>now||at<now-60_000)return [];
     return [{id:`pihole:query:${row.id}`,observed_at:at,captured_at:now,domain:row.domain,client:"10.77.0.100",type:"A" as const,
       status:["CACHE","FORWARDED","GRAVITY","DENYLIST","SPECIAL_DOMAIN"].includes(row.status)?row.status:"OTHER",
-      reply:row.reply?.type==="IP"?"IP":"OTHER",indicator:row.domain==="flagged.lab.test"}];
+      reply:row.reply?.type==="IP"?"IP":"OTHER",indicator:row.domain==="update-check.cloudsyncapi.net"}];
   });
 }
 
@@ -45,7 +48,7 @@ export class CapturedLogs {
   }
   snapshot(){
     const parse=(row:any)=>JSON.parse(row.body);
-    return {status:this.status==="live"&&this.checkedAt!==null&&this.now()-this.checkedAt>10_000?"stale":this.status,checked_at:this.checkedAt,scope:"Owned lab client 10.77.0.100; two test domains; VM-live",
+    return {status:this.status==="live"&&this.checkedAt!==null&&this.now()-this.checkedAt>10_000?"stale":this.status,checked_at:this.checkedAt,scope:"Owned client 10.77.0.100; operator-selected DNS domains; VM-live",
       rows:this.db.query("SELECT body FROM captured_queries ORDER BY at DESC LIMIT 80").all().map(parse) as CapturedQuery[],
       events:this.db.query("SELECT body FROM activity ORDER BY seq DESC LIMIT 80").all().map(parse) as {at:number;kind:string;summary:string;evidence_refs:string[]}[]};
   }

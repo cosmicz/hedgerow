@@ -2,7 +2,7 @@ import { replay, type ReplayResult } from "../replay/evaluate";
 import type { ReplayContext } from "../replay/normalize";
 
 export const scope = "lab:rg-lab";
-export const target = "flagged.lab.test";
+export const target = "update-check.cloudsyncapi.net";
 export const source = "pihole-owned-client";
 /** Pi-hole exposes some completed queries after the probe returns. Retry reads only. */
 export async function pollQueryEvidence(read: () => Promise<unknown>, from: number, now = Date.now,
@@ -56,6 +56,6 @@ export async function fetchOwnedQueries(password: string, from: number, history 
     const auth: any = await request("/auth", "POST", { password });
     if (auth?.session?.valid !== true || typeof auth.session.sid !== "string" || !auth.session.sid) throw new Error("Query authentication unavailable");
     sid = auth.session.sid;
-    return await request(`/queries?${history ? "" : "domain=flagged.lab.test&"}client_ip=10.77.0.100&type=A&length=100&from=${Math.floor(from / 1000)}`);
+    return await request(`/queries?${history ? "" : "domain=update-check.cloudsyncapi.net&"}client_ip=10.77.0.100&type=A&length=100&from=${Math.floor(from / 1000)}`);
   } finally { if (sid) { try { await request("/auth", "DELETE"); } catch { /* No mutation was authorized by this collector. */ } } }
 }

@@ -4,7 +4,8 @@
 import { describe, expect, test } from "bun:test";
 
 import type { CapturedQuery } from "../../src/demo/logs.js";
-import { LogClassifier } from "../../src/demo/log-classifier.js";
+import { LogClassifier, projectClosedRow } from "../../src/demo/log-classifier.js";
+import traffic from "../../lab/traffic-domains.json";
 
 const BASE = "https://openrouter.ai/api/alpha/decisions";
 const LAB_CLIENT = "10.77.0.100";
@@ -37,6 +38,14 @@ function stubProvider(choice: "benign" | "suspicious" | "unknown" = "suspicious"
 const opts = (fetcher: typeof fetch, now: () => number, key = () => "or_test_key") => ({ model: "cloudflare/clef" as const, key, fetcher, now, timeoutMs: 2_000 });
 
 describe("log classifier", () => {
+  test("keeps selected web-domain context closed to the owned client", () => {
+    for(const domain of traffic.domains){
+      expect(projectClosedRow(row({id:"web",observed_at:1,domain,indicator:false})).domain).toBe(domain);
+      expect(()=>projectClosedRow(row({id:"web",observed_at:1,domain,client:"192.168.1.3"}))).toThrow();
+    }
+    expect(()=>projectClosedRow(row({id:"private",observed_at:1,domain:"private.example"}))).toThrow();
+    expect(()=>projectClosedRow(row({id:"removed",observed_at:1,domain:"pornhub.com"}))).toThrow();
+  });
   test("groups fresh flagged rows into one incident labelled by the model over a closed projection", async () => {
     const now = 1_000_000_000;
     const { calls, fetcher } = stubProvider("suspicious");

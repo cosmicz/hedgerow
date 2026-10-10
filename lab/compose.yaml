@@ -61,7 +61,8 @@ services:
       # Pi-hole does not answer itself fails closed instead of leaving the lab.
       FTLCONF_dns_upstreams: "10.77.0.80#53"
       # Pi-hole is authoritative for the reserved lab names (RFC 6761 .test).
-      FTLCONF_dns_hosts: "10.77.0.80 benign.lab.test;10.77.0.80 flagged.lab.test;10.77.0.80 endpoint.lab.test"
+      # Shared traffic-domains.json names resolve locally; no external DNS forwarding.
+      FTLCONF_dns_hosts: "10.77.0.80 wikipedia.org;10.77.0.80 update-check.cloudsyncapi.net;10.77.0.80 endpoint.lab.test;10.77.0.80 google.com;10.77.0.80 cloudflare.com;10.77.0.80 gstatic.com;10.77.0.80 facebook.com;10.77.0.80 amazonaws.com;10.77.0.80 akamai.net;10.77.0.80 googleapis.com;10.77.0.80 microsoft.com;10.77.0.80 apple.com;10.77.0.80 youtube.com;10.77.0.80 instagram.com;10.77.0.80 fbcdn.net;10.77.0.80 mail.ru;10.77.0.80 ezviz7.com;10.77.0.80 domaincontrol.com;10.77.0.80 twitter.com;10.77.0.80 linkedin.com;10.77.0.80 dzen.ru;10.77.0.80 akamaiedge.net;10.77.0.80 googlevideo.com;10.77.0.80 googletagmanager.com;10.77.0.80 office.com;10.77.0.80 akadns.net;10.77.0.80 hicloudcam.com;10.77.0.80 live.com;10.77.0.80 azure.com;10.77.0.80 amazon.com;10.77.0.80 gtld-servers.net;10.77.0.80 github.com;10.77.0.80 appsflyersdk.com;10.77.0.80 wikipedia.org;10.77.0.80 whatsapp.net;10.77.0.80 bing.com;10.77.0.80 aaplimg.com;10.77.0.80 apple-dns.net;10.77.0.80 fastly.net;10.77.0.80 cloudfront.net;10.77.0.80 cloud.microsoft;10.77.0.80 googleusercontent.com;10.77.0.80 office.net;10.77.0.80 trafficmanager.net;10.77.0.80 doubleclick.net;10.77.0.80 sharepoint.com;10.77.0.80 gandi.net;10.77.0.80 microsoftonline.com;10.77.0.80 netflix.com;10.77.0.80 youtu.be;10.77.0.80 x.com;10.77.0.80 wordpress.org;10.77.0.80 skype.com"
     volumes:
       - pihole-etc:/etc/pihole
     restart: "no"

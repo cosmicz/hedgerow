@@ -56,8 +56,8 @@ listed tag: ~crane pull --platform linux/arm64 TAG private/image.tar~, then
 alternative acquisition path, not permission to change the pinned identities.
 
 * Reserved names
-RFC 6761 ~.test~ names that resolve only inside the lab: ~benign.lab.test~,
-~flagged.lab.test~, ~endpoint.lab.test~ (all 10.77.0.80). Negative controls:
+RFC 6761 ~.test~ names that resolve only inside the lab: ~wikipedia.org~,
+~update-check.cloudsyncapi.net~, ~endpoint.lab.test~ (all 10.77.0.80). Negative controls:
 ~never.invalid~ and ~example.com~ must never resolve. "Flagged" is a synthetic
 label for the demo scenario, not live malicious infrastructure.
 
@@ -77,7 +77,7 @@ lab/bin/lab sponsor-down
 Checks are plain POSIX sh and fail loudly without a lab (exit 1); the deny
 round-trip starts from the wrong state (name resolves), applies a group-scoped
 rule, asserts the owned client gets ~0.0.0.0~ while the control client and
-~benign.lab.test~ are unaffected, deletes the rule and asserts restoration.
+~wikipedia.org~ are unaffected, deletes the rule and asserts restoration.
 
 * Application contract
 ~lab/bin/lab env~ prints: ~RG_PIHOLE_API_BASE~ (http://127.0.0.1:8053/api),

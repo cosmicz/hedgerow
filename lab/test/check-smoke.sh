@@ -5,8 +5,8 @@
 load_env
 
 q() { sh "$LAB_DIR/test/dnsq.sh" "$1" 10.77.0.53; }
-assert_eq 10.77.0.80 "$(q benign.lab.test)"  "benign.lab.test -> 10.77.0.80"
-assert_eq 10.77.0.80 "$(q flagged.lab.test)" "flagged.lab.test -> 10.77.0.80 (no rule yet)"
+assert_eq 10.77.0.80 "$(q wikipedia.org)"  "wikipedia.org -> 10.77.0.80"
+assert_eq 10.77.0.80 "$(q update-check.cloudsyncapi.net)" "update-check.cloudsyncapi.net -> 10.77.0.80 (no rule yet)"
 assert_eq 10.77.0.80 "$(q endpoint.lab.test)" "endpoint.lab.test -> 10.77.0.80"
 assert_eq "" "$(q never.invalid)" "never.invalid does not resolve"
 banner=$(in_svc client sh -c 'wget -q -T 5 -O - http://endpoint.lab.test/' 2>/dev/null || true)

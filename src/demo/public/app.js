@@ -2,6 +2,40 @@ let token, state, actionBusy=false, chatBusy=false, connectionLost=false;
 const byId=id=>document.getElementById(id);
 const node=(tag,text,className)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(className)n.className=className;return n;};
 const when=at=>at?new Date(at).toLocaleTimeString():"time unavailable";
+// Build rich text from DOM nodes; model output never enters an HTML parser.
+function inlineMarkdown(parent,text){
+  const tokens=/\*\*([^*\n]+)\*\*|`([^`\n]+)`|\*([^*\n]+)\*|\[([^\]\n]+)\]\(([^\s)]+)\)/g;
+  let offset=0;
+  for(const match of text.matchAll(tokens)){
+    if(match.index>offset)parent.append(node("span",text.slice(offset,match.index)));
+    if(match[1]){const strong=node("strong");inlineMarkdown(strong,match[1]);parent.append(strong);}
+    else if(match[2])parent.append(node("code",match[2]));
+    else if(match[3])parent.append(node("em",match[3]));
+    else{
+      let url;try{url=new URL(match[5]);}catch{}
+      if(url&&["https:","http:"].includes(url.protocol)){
+        const link=node("a",match[4]);link.href=url.href;link.rel="noopener noreferrer";link.target="_blank";parent.append(link);
+      }else parent.append(node("span",match[0]));
+    }
+    offset=match.index+match[0].length;
+  }
+  if(offset<text.length)parent.append(node("span",text.slice(offset)));
+}
+function markdown(text){
+  const root=node("div",undefined,"rich-text");let list=null,paragraph=[],fence=null;
+  const flush=()=>{if(paragraph.length){const p=node("p");inlineMarkdown(p,paragraph.join(" "));root.append(p);paragraph=[];}};
+  for(const line of String(text).replace(/\r\n/g,"\n").split("\n")){
+    if(/^\s*```/.test(line)){flush();list=null;if(fence){root.append(node("pre",fence.join("\n")));fence=null;}else fence=[];continue;}
+    if(fence){fence.push(line);continue;}
+    if(!line.trim()){flush();list=null;continue;}
+    const heading=line.match(/^\s*(#{1,6})\s+(.+)$/),item=line.match(/^\s*(?:([-+*])|\d+[.)])\s+(.+)$/),quote=line.match(/^>\s?(.*)$/);
+    if(heading){flush();list=null;const h=node(heading[1].length>3?"h4":"h3");inlineMarkdown(h,heading[2]);root.append(h);}
+    else if(item){flush();const kind=item[1]?"ul":"ol";if(!list||list.kind!==kind){const element=node(kind);root.append(element);list={kind,element};}const li=node("li");inlineMarkdown(li,item[2]);list.element.append(li);}
+    else if(quote){flush();list=null;const block=node("blockquote");inlineMarkdown(block,quote[1]);root.append(block);}
+    else{list=null;paragraph.push(line);}
+  }
+  flush();if(fence)root.append(node("pre",fence.join("\n")));return root;
+}
 function button(label,command,digest){const n=node("button",label,"secondary");n.disabled=actionBusy;n.addEventListener("click",()=>run(command,{digest}));return n;}
 function renderRouter(r){
   const section=byId("router");section.replaceChildren();
@@ -19,34 +53,32 @@ function renderRouter(r){
     if(r.phase==="approved")section.append(button("Ask OpenAI to secure the router","router-execute",r.proposal.digest));
   }
   if(r.trace){const measured=node("section",undefined,"measured");measured.append(node("h3","Login verification"));for(const a of r.trace.attempts)measured.append(node("p",`${a.attempt}: ${a.outcome} at ${when(a.occurred_at)}.`));section.append(measured);}
-  if(r.agent){section.append(node("h3","Agent response"),node("p",`Generated ${when(r.agent_at)}. ${r.agent.status}; ${r.agent.calls.length} tool calls.`));if(r.agent.explanation)section.append(node("p",r.agent.explanation.text),node("p",`Cited traces: ${r.agent.explanation.citations.join(", ")}`,"digest"));else section.append(node("p","No validated explanation available. Inspect the measured checks.","caution"));}
+  if(r.agent){section.append(node("h3","Agent response"),node("p",`Generated ${when(r.agent_at)}. ${r.agent.status}; ${r.agent.calls.length} tool calls.`));if(r.agent.explanation)section.append(markdown(r.agent.explanation.text),node("p",`Cited traces: ${r.agent.explanation.citations.join(", ")}`,"digest"));else section.append(node("p","No validated explanation available. Inspect the measured checks.","caution"));}
   if(r.phase!=="down")section.append(button("Stop router","router-cleanup"));
 }
 function render(s){
-  state=s;byId("coverage").textContent=s.coverage;
-  byId("topology").textContent=s.topology;
+  state=s;
+  // Polling must not replace the DOM while someone is selecting text to copy.
+  if(globalThis.getSelection?.()?.toString())return;
   renderRouter(s.router);
   renderIncidents(s);renderChat(s);
   const logs=s.logs,rows=byId("captured-rows");rows.replaceChildren();
-  const refs=new Set((s.evidence?.observations??[]).filter(o=>o.kind==="dns_query").map(o=>o.evidence_ref));
-  byId("log-status").textContent=logs?`Pi-hole · ${logs.status==="live"?"Live":logs.status==="starting"?"Connecting":"Disconnected"} · Updated ${when(logs.checked_at)}` : "Pi-hole is not connected.";
+  byId("log-status").textContent=logs?(logs.status==="live"?"Live":logs.status==="starting"?"Connecting…":"Disconnected") : "Connecting…";
   for(const row of (logs?.rows??[]).slice(0,14)){
     const incident=(s.incidents?.incidents??[]).find(i=>i.source_ids?.includes(row.id));
     const tr=node("tr",undefined,incident?.category==="suspicious"?"indicator-row":"");
-    const stamp=node("td",when(row.observed_at));stamp.append(node("small",`captured ${when(row.captured_at)}`));
-    const query=node("td",`${row.type} ${row.domain}`);query.append(node("small",row.client));
-    const evidence=node("td",incident?incident.id.slice(-8):row.id);evidence.append(node("small",refs.has(row.id)?"Current incident":row.indicator?"Flagged name":"—"));
-    tr.append(stamp,query,node("td",`${row.status} / ${row.reply}`),evidence);rows.append(tr);
+    const query=node("td",row.domain);if(incident?.category==="suspicious")query.append(node("small","Suspicious activity"));
+    const result=["GRAVITY","DENYLIST","SPECIAL_DOMAIN"].includes(row.status)?"Blocked":row.reply==="IP"?(row.status==="CACHE"?"Resolved (cached)":"Resolved"):"Other response";
+    tr.append(node("td",when(row.observed_at)),node("td",row.client),query,node("td",result));rows.append(tr);
   }
   if(!logs?.rows.length){const tr=node("tr"),td=node("td","Waiting for device logs…");td.colSpan=4;tr.append(td);rows.append(tr);}
-  byId("log-link").textContent=refs.size?`Selected: ${[...refs].join(", ")}`:"";
   const activity=byId("activity-rows");activity.replaceChildren();
   for(const event of (logs?.events??[]).slice(0,16)){
     const li=node("li");li.append(node("time",when(event.at)),node("span",event.summary));
     if(event.evidence_refs.length)li.append(node("small",event.evidence_refs.join(", ")));activity.append(li);
   }
   const evidence=byId("evidence");evidence.replaceChildren();
-  if(s.finding){evidence.append(node("h3","Flagged DNS activity"),node("p","flagged.lab.test was queried by 10.77.0.100."));}
+  if(s.finding){evidence.append(node("h3","Flagged DNS activity"),node("p","update-check.cloudsyncapi.net was queried by 10.77.0.100."));}
   const judgments=byId("judgments");judgments.replaceChildren();
   for(const j of s.judgments){const line=node("div",undefined,"judgment"),label=node("span",j.model),value=node("span",j.category);label.append(node("small",j.provenance==="deterministic"?"Policy":`${j.provider}: ${j.inference_status}`));line.append(label,value);judgments.append(line);}
   const approval=byId("approval"),verification=byId("verification"),interpretation=byId("interpretation");approval.replaceChildren();verification.replaceChildren();interpretation.replaceChildren();
@@ -55,10 +87,10 @@ function render(s){
     if(action.status==="proposed")approval.append(button("Approve block","approve",action.digest));
     if(action.status==="approved")approval.append(button("Apply with agent","execute",action.digest));
     if(["active","ambiguous","rollback-unverified"].includes(action.status))approval.append(button("Undo block","undo",action.digest));
-    if(action.verification){const v=action.verification;verification.className="measured";verification.append(node("h3","Verification"),node("p",`flagged.lab.test: ${v.target}. benign.lab.test: ${v.benign}.`),node("p",`Checked ${when(v.checked_at)}.`));}
+    if(action.verification){const v=action.verification;verification.className="measured";verification.append(node("h3","Verification"),node("p",`update-check.cloudsyncapi.net: ${v.target}. wikipedia.org: ${v.benign}.`),node("p",`Checked ${when(v.checked_at)}.`));}
   }
   if(s.agent){interpretation.append(node("h3","Agent response"),node("p",`OpenAI · ${when(s.agent_at)} · ${s.agent.status} · ${s.agent.calls.length} tool calls`));
-    if(s.agent.explanation){interpretation.append(node("p",s.agent.explanation.text),node("p",`Cited traces: ${s.agent.explanation.citations.join(", ")}`,"digest"));}
+    if(s.agent.explanation){interpretation.append(markdown(s.agent.explanation.text),node("p",`Cited traces: ${s.agent.explanation.citations.join(", ")}`,"digest"));}
     else interpretation.append(node("p","The agent could not finish its explanation. See verification above.","caution"));
   }
   const timeline=byId("timeline");timeline.replaceChildren();for(const t of s.traces.slice(-8)){const li=node("li",t.summary);li.append(node("time",when(t.at)));timeline.append(li);}
@@ -70,7 +102,7 @@ function render(s){
       if(result.status!=="ok"){guidance.append(node("p",`Reference unavailable: ${result.reason}`,"caution"));continue;}
       const detail=node("details"),label=result.topic==="dns-deny-limits"?"DNS protection":"Understanding the evidence";detail.open=!!openGuidance[index];
       detail.append(node("summary",label));
-      for(const passage of result.passages)detail.append(node("p",passage.text));
+      for(const passage of result.passages)detail.append(markdown(passage.text));
       detail.append(node("p",`Source document: ${result.document.title}. Senso content ID: ${result.citations.join(", ")}. Retrieved at ${when(s.guidance.completed_at)}.`,"digest"));guidance.append(detail);
     }
   }
@@ -108,7 +140,7 @@ function renderChat(s){
   const root=byId("chat-messages"),messages=s.chat?.messages??[];
   const signature=JSON.stringify(messages);
   if(root.dataset.signature!==signature){root.dataset.signature=signature;root.replaceChildren();
-    for(const m of messages){const line=node("div",undefined,"chat-message "+m.role);line.append(node("small",m.role==="user"?"You":"Hedgerow"),node("p",m.content));root.append(line);}
+    for(const m of messages){const line=node("div",undefined,"chat-message "+m.role);line.append(node("small",m.role==="user"?"You":"Hedgerow"),m.role==="assistant"?markdown(m.content):node("p",m.content));root.append(line);}
     root.scrollTop=root.scrollHeight;
   }
   byId("chat-input").disabled=chatBusy;

@@ -6,7 +6,8 @@ also govern this independent application repository.
 
 Use the canonical cyber26 tracker with the explicit binding in README.org;
 do not inherit an unrelated Org tracker or create a local tracker. Worktree
-users must resolve the absolute rig at /Users/cosmic/dev/@events/cyberhack-26.
+users must resolve the absolute rig root on their own host (the checkout that
+holds this repository and the cyber26 tracker); never hard-code that path.
 This application is ignored by its parent rig: commit application changes
 here and coordination changes there, never a nested gitlink.
 
